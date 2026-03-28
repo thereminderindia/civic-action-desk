@@ -73,8 +73,8 @@ with lang_col:
     target_language = st.selectbox("Select Letter Language:", 
         ["English", "Hindi (हिन्दी)", "Bengali (বাংলা)", "Marathi (मराठी)", 
          "Telugu (తెలుగు)", "Tamil (தமிழ்)", "Gujarati (ગુજરાતી)", 
-         "Urdu (اردו)", "Kannada (କನ್ನಡ)", "Odia (ଓଡ଼ିଆ)", 
-         "Malayalam (മലയാളം)", "Punjabi (ਪੰਜਾਬੀ)", "Assamese (অসমੀয়া)", 
+         "Urdu (اردو)", "Kannada (କನ್ನಡ)", "Odia (ଓଡ଼ିଆ)", 
+         "Malayalam (മലയാളം)", "Punjabi (ਪੰਜਾਬੀ)", "Assamese (অসমୀয়া)", 
          "Maithili (मैथिली)", "Santali (संताली)", "Kashmiri (کٲशُر)", 
          "Nepali (नेपाली)", "Konkani (कोंकਣੀ)", "Sindhi (سنڌي)", 
          "Dogri (डोगरी)", "Manipuri (মৈতৈলোন)", "Bodo (बर')", "Sanskrit (संस्कृतम्)"])
@@ -137,19 +137,25 @@ if st.button("🚀 1. Generate Official Letter"):
             evidence_count = len(uploaded_files) if uploaded_files else 0
 
             system_prompt = f"""
-            Draft a formal civic complaint in {target_language}.
+            Draft a professional civic complaint in {target_language}.
+            
+            STRICT STRUCTURE:
+            1. TOP RIGHT DATE: {current_date}
+            2. FROM: Name: {user_name}. (Include '{contact_text}' ONLY if it is not 'NOT_PROVIDED').
+            3. TO: The Municipal Commissioner, {selected_loc['Town']}, {selected_loc['District']}. PIN: {selected_loc['PIN']}
+            4. BODY: 
+               - Para 1: State the issue clearly based on user input.
+               - Para 2: Mention GPS: {gps_val}. (If NOT_CAPTURED, ask for on-ground verification).
+               - Para 3: If evidence files > 0, mention that photographic/video evidence is attached. Otherwise, SKIP.
+            5. CLOSING (MANDATORY): 
+               Sincerely,
+               {user_name}
+               Supported by The Reminder India community.
             
             RULES:
-            - TOP RIGHT DATE: {current_date}
-            - FROM: Name: {user_name}. (Include '{contact_text}' ONLY if it is not 'NOT_PROVIDED'. If 'NOT_PROVIDED', omit the line completely).
-            - TO: The Municipal Commissioner, {selected_loc['Town']}, {selected_loc['District']}. PIN: {selected_loc['PIN']}
-            - BODY: Mention GPS: {gps_val} (If NOT_CAPTURED, request ground verification).
-            - EVIDENCE: If files > 0, mention attachments. If 0, do NOT mention attachments.
-            - OUTPUT: RAW TEXT ONLY. NO markdown backticks (```).
-            - EMAIL: Provide the most likely official gov email for {selected_loc['Town']}. 
-            - CRITICAL: NEVER use 'example.com'. If no high-probability email exists, leave the field after 'SUGGESTED_EMAIL:' blank.
-            
-            END WITH: 'SUGGESTED_EMAIL: '
+            - RAW TEXT ONLY. NO markdown backticks (```) or code boxes.
+            - NO placeholder emails like 'example.com'.
+            - END WITH: 'SUGGESTED_EMAIL: '
             """
             response = client.chat.completions.create(
                 model="gpt-4o-mini",
@@ -171,9 +177,9 @@ if "letter" in st.session_state:
     with col_to:
         rec_to = st.text_input("To (Primary Official):", value=st.session_state.sug_email)
     with col_cc:
-        rec_cc = st.text_input("CC (Public Copy):", value="", placeholder="e.g. news@media.com")
+        rec_cc = st.text_input("CC (Public Copy):", value="")
     with col_bcc:
-        rec_bcc = st.text_input("BCC (Secret Archive):", value="", placeholder="e.g. archive@reminderindia.com")
+        rec_bcc = st.text_input("BCC (Secret Archive):", value="")
 
     col_btn1, col_btn2 = st.columns(2)
     with col_btn1:
