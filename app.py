@@ -14,10 +14,11 @@ APP_PASSWORD = st.secrets["APP_PASSWORD"]
 current_date = datetime.now().strftime("%B %d, %Y")
 
 # Connect to Google Sheets
+# Note: The URL must be in your Streamlit Secrets, not hardcoded here
 try:
     conn = st.connection("gsheets", type=GSheetsConnection)
-except:
-    st.sidebar.error("GSheets Secret not found. Check your Settings > Secrets.")
+except Exception as e:
+    st.sidebar.error("GSheets Connection Error. Check your Secrets.")
 
 # 2. PDF Function
 def create_pdf(text):
@@ -30,8 +31,9 @@ def create_pdf(text):
 
 # 3. Interface & Branding
 st.set_page_config(page_title="The Reminder India", page_icon="🏛️")
-# Replace with your actual YouTube Logo Link
-logo_url = "https://www.facebook.com/photo/?fbid=122097222099239425&set=pb.61587182761969.-2207520000" 
+
+# Using a more reliable placeholder logo; replace with your direct image URL
+logo_url = "https://via.placeholder.com/150x150?text=TRI+LOGO" 
 
 col1, col2 = st.columns([1, 4])
 with col1:
@@ -41,6 +43,7 @@ with col2:
     st.subheader("National Civic Action Desk")
 
 # Sidebar Stats
+existing_data = pd.DataFrame() # Initialize empty
 try:
     existing_data = conn.read(ttl="1m")
     st.sidebar.metric("Total Complaints Filed", len(existing_data))
@@ -59,7 +62,6 @@ if st.button("🚀 1. Generate Official Letter"):
         st.error("Please enter a valid Pincode and Issue.")
     else:
         with st.spinner("Drafting letter and identifying authority..."):
-            # We tell the AI the Date and your Email to fill the placeholders
             system_prompt = f"""
             You are a Senior Civic Advocate. 
             DATE: {current_date}
@@ -67,10 +69,10 @@ if st.button("🚀 1. Generate Official Letter"):
             
             TASKS:
             1. Write a formal complaint for Pincode {pincode}.
-            2. Use the DATE provided above. Do not use [Insert Date].
+            2. Use the DATE provided above.
             3. Sign off with '{user_name}' and the SENDER_EMAIL provided.
             4. At the VERY END of your response, on a new line, write 'SUGGESTED_EMAIL: ' followed by the 
-               official municipal email address for this pincode (e.g., commissioner@mcd.nic.in for Delhi).
+               official municipal email address for this pincode.
             """
             
             response = client.chat.completions.create(
@@ -81,32 +83,24 @@ if st.button("🚀 1. Generate Official Letter"):
             
             full_res = response.choices[0].message.content
             
-            # Extract the Suggested Email from the AI's response
             if "SUGGESTED_EMAIL:" in full_res:
-                letter_text = full_res.split("SUGGESTED_EMAIL:")[0].strip()
-                suggested_email = full_res.split("SUGGESTED_EMAIL:")[1].strip()
+                st.session_state.letter = full_res.split("SUGGESTED_EMAIL:")[0].strip()
+                st.session_state.suggested_email = full_res.split("SUGGESTED_EMAIL:")[1].strip()
             else:
-                letter_text = full_res
-                suggested_email = ""
-
-            st.session_state.letter = letter_text
-            st.session_state.suggested_email = suggested_email
+                st.session_state.letter = full_res
+                st.session_state.suggested_email = ""
 
 # 6. Review & Send
 if "letter" in st.session_state:
     st.divider()
     st.text_area("Final Letter:", value=st.session_state.letter, height=350)
     
-    # PDF Download
     pdf_bytes = create_pdf(st.session_state.letter)
     st.download_button("📥 Download PDF", data=pdf_bytes, file_name=f"Complaint_{pincode}.pdf")
 
     st.markdown("### Step 2: Send to Authority")
-    
-    # This box now automatically fills with the AI's suggestion
     recipient = st.text_input("Authority Email Address:", value=st.session_state.suggested_email)
-    st.caption("Check [lgdirectory.gov.in](https://lgdirectory.gov.in/) to verify this email.")
-
+    
     if st.button("📧 2. Send Email Now"):
         if not recipient:
             st.error("Please enter a recipient email.")
@@ -136,6 +130,7 @@ if "letter" in st.session_state:
                         "Issue": issue[:100],
                         "Recipient": recipient
                     }])
+                    
                     updated_df = pd.concat([existing_data, new_entry], ignore_index=True)
                     conn.update(data=updated_df)
 
