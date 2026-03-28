@@ -55,7 +55,7 @@ st.sidebar.link_button("🔍 Pincode Verify", "https://www.indiapost.gov.in/VAS/
 
 pincode_df = load_pincode_db()
 
-# Branding Header
+# Branding
 logo_url = "https://www.facebook.com/photo/?fbid=122097222099239425&set=pb.61587182761969.-2207520000" 
 col_logo, col_title = st.columns([1, 5])
 with col_logo:
@@ -64,7 +64,7 @@ with col_title:
     st.title("The Reminder India")
     st.subheader("National Civic Action Desk")
 
-# 4. STEP 1: 22 LANGUAGES & PINCODE
+# 4. STEP 1: LANGUAGES & PINCODE
 st.markdown("---")
 st.subheader("📍 Step 1: Language & Location")
 lang_col, pin_col, details_col = st.columns([2, 2, 4])
@@ -73,10 +73,10 @@ with lang_col:
     target_language = st.selectbox("Select Letter Language:", 
         ["English", "Hindi (हिन्दी)", "Bengali (বাংলা)", "Marathi (मराठी)", 
          "Telugu (తెలుగు)", "Tamil (தமிழ்)", "Gujarati (ગુજરાਤੀ)", 
-         "Urdu (اردו)", "Kannada (କನ್ನಡ)", "Odia (ଓଡ଼ିଆ)", 
+         "Urdu (اردو)", "Kannada (କನ್ನಡ)", "Odia (ଓଡ଼ିଆ)", 
          "Malayalam (മലയാളം)", "Punjabi (ਪੰਜਾਬੀ)", "Assamese (অসমੀয়া)", 
          "Maithili (मैथिली)", "Santali (संताली)", "Kashmiri (کٲशُر)", 
-         "Nepali (नेपाली)", "Konkani (कोंकਣੀ)", "Sindhi (سنڌي)", 
+         "Nepali (नेपाली)", "Konkani (कोंকਣੀ)", "Sindhi (سنڌي)", 
          "Dogri (डੋਗਰੀ)", "Manipuri (মৈতৈলোন)", "Bodo (बर')", "Sanskrit (संस्कृतम्)"])
 
 with pin_col:
@@ -97,9 +97,10 @@ with details_col:
         else:
             st.error("❌ PIN not found in database.")
 
+# GPS & File Uploads
 col_gps, col_files = st.columns(2)
 with col_gps:
-    if st.button("🛰️ Capture GPS"):
+    if st.button("🛰️ Capture Exact GPS"):
         loc = streamlit_js_eval(data_key='pos', func_name='getCurrentPosition', want_output=True)
         if loc:
             st.session_state.gps_coord = f"Lat: {loc['coords']['latitude']}, Lon: {loc['coords']['longitude']}"
@@ -108,7 +109,7 @@ with col_gps:
 with col_files:
     uploaded_files = st.file_uploader("Attach Evidence (Photos/Videos):", accept_multiple_files=True)
 
-# 5. STEP 2: REPORTER DETAILS (Strict 10-Digit Phone)
+# 5. STEP 2: REPORTER DETAILS
 st.markdown("---")
 st.subheader("📝 Step 2: Reporter Details")
 user_name = st.text_input("Full Name (Sender):")
@@ -131,20 +132,21 @@ if st.button("🚀 1. Generate Official Letter"):
         st.error("⚠️ Missing details (Name, PIN, or Issue).")
     else:
         with st.spinner(f"Drafting formal letter..."):
-            contact_info = f"Contact Number: {user_phone}" if user_phone.strip() else ""
-            gps_line = f"GPS Coordinates: {st.session_state.get('gps_coord', 'Not captured')}"
+            # Mandatory insertion to prevent AI from hiding it
+            contact_text = f"Contact Number: {user_phone}" if user_phone.strip() else ""
+            gps_val = st.session_state.get('gps_coord', 'On-ground verification requested')
             evidence_count = len(uploaded_files) if uploaded_files else 0
 
             system_prompt = f"""
-            Draft a formal civic complaint in {target_language}.
+            Draft a professional civic complaint in {target_language}.
             
-            STRICT LAYOUT RULES:
-            1. DATE (TOP RIGHT): Place '{current_date}' at the top right.
+            STRICT LAYOUT:
+            1. DATE (TOP RIGHT): '{current_date}'
             
             2. FROM SECTION:
                From,
                Name: {user_name}
-               {contact_info}
+               {contact_text}
             
             3. TO SECTION:
                To,
@@ -153,14 +155,15 @@ if st.button("🚀 1. Generate Official Letter"):
                PIN: {selected_loc['PIN']}
             
             4. BODY: 
-               - Para 2: Mention GPS: {gps_line}
-               - Para 3: Mention {evidence_count} evidence files attached.
+               - State the issue based on: {issue}
+               - Mention GPS: {gps_val}
+               - Mention {evidence_count} evidence files are attached.
             
-            5. SIGN-OFF: Sincerely, {user_name}. Supported by TRI.
+            5. SIGN-OFF: Sincerely, {user_name}. Supported by The Reminder India community.
             
-            CRITICAL: 
-            - If no phone number is provided, DO NOT include the word 'Contact' or any phone line in the 'From' section.
-            - Ensure PIN is ONLY shown in the 'To' section address.
+            CRITICAL RULES:
+            - If contact number is provided ({user_phone}), you MUST include the line "{contact_text}" in the 'From' section.
+            - Ensure PIN: {selected_loc['PIN']} is clearly visible in the 'To' section address.
             
             END WITH: 'SUGGESTED_EMAIL: '
             """
@@ -172,15 +175,15 @@ if st.button("🚀 1. Generate Official Letter"):
             st.session_state.letter = res_content.split("SUGGESTED_EMAIL:")[0].strip()
             st.session_state.sug_email = res_content.split("SUGGESTED_EMAIL:")[1].strip() if "SUGGESTED_EMAIL:" in res_content else ""
 
-# 7. STEP 4: EDITABLE RECIPIENTS & MULTIPLE EMAILS
+# 7. STEP 4: REVIEW & MULTI-SEND
 if "letter" in st.session_state:
     st.divider()
-    st.subheader("📬 Step 4: Review & Send")
+    st.subheader("📬 Step 4: Final Review & Email Controls")
     st.text_area("Letter Content:", value=st.session_state.letter, height=500)
     
     col_to, col_cc, col_bcc = st.columns(3)
     with col_to:
-        rec_to = st.text_input("To (Primary):", value=st.session_state.sug_email, help="Separate multiple emails with commas")
+        rec_to = st.text_input("To (Primary):", value=st.session_state.sug_email)
     with col_cc:
         rec_cc = st.text_input("CC (Public):", placeholder="news@media.com, dm@gov.in")
     with col_bcc:
