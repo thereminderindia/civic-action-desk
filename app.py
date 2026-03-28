@@ -56,7 +56,7 @@ st.sidebar.link_button("🔍 Pincode Verify", "https://www.indiapost.gov.in/VAS/
 pincode_df = load_pincode_db()
 
 # Branding
-logo_url = "https://via.placeholder.com/150x150?text=TRI+LOGO" 
+logo_url = "https://www.facebook.com/photo/?fbid=122097222099239425&set=pb.61587182761969.-2207520000" 
 col_logo, col_title = st.columns([1, 5])
 with col_logo:
     st.image(logo_url, width=90)
@@ -132,30 +132,29 @@ if st.button("🚀 1. Generate Official Letter"):
     is_phone_valid = not user_phone or (user_phone.isdigit() and len(user_phone) == 10)
 
     if not is_pin_valid or not is_phone_valid or not user_name or not selected_loc or not issue:
-        st.error("⚠️ Please check PIN (6 digits), Phone (10 digits), and all other fields.")
+        st.error("⚠️ Please fix the errors in PIN, Phone, or Name before generating.")
     else:
         with st.spinner(f"Drafting formal petition..."):
-            contact_text = f"Contact Number: {user_phone}" if user_phone.strip() else ""
-            gps_val = st.session_state.get('gps_coord', 'On-ground verification requested')
+            contact_line = f"Contact: {user_phone}" if user_phone.strip() else "NONE"
+            gps_val = st.session_state.get('gps_coord', "NOT_CAPTURED")
             evidence_count = len(uploaded_files) if uploaded_files else 0
 
             system_prompt = f"""
             Draft a professional civic complaint in {target_language}.
             
-            STRICT LAYOUT:
-            1. DATE (TOP RIGHT): '{current_date}'
-            2. FROM SECTION: From, Name: {user_name}, {contact_text}
-            3. TO SECTION: To, The Municipal Commissioner, {selected_loc['Town']}, {selected_loc['District']}. PIN: {selected_loc['PIN']}
+            LAYOUT:
+            1. TOP RIGHT: '{current_date}'
+            2. FROM: Name: {user_name} (Only include Contact line if it is not 'NONE')
+            3. TO: The Municipal Commissioner, {selected_loc['Town']}, {selected_loc['District']}. PIN: {selected_loc['PIN']}
             
-            STRICT CONTENT RULES:
-            - If contact number is provided ({user_phone}), you MUST include "{contact_text}" in the 'From' section.
-            - If no phone number is provided, do NOT include the word 'Contact' or any phone line.
-            - Mention GPS: {gps_val}.
-            - EVIDENCE RULE: If files attached ({evidence_count}) is greater than 0, mention that photographic/video evidence is attached.
-            - NO EVIDENCE RULE: If files attached is 0, DO NOT mention attachments, "0 evidence files", or the verification process at all.
-            - PIN belongs ONLY in the 'To' section address.
+            CONTENT REQUIREMENTS:
+            - If contact info is '{contact_line}' and not 'NONE', include it. Otherwise, hide the 'Contact:' label entirely.
+            - You MUST mention the GPS Coordinates if available: {gps_val}. If 'NOT_CAPTURED', request on-ground verification.
+            - You MUST mention that photographic/video evidence is attached ONLY if evidence count is {evidence_count} > 0.
+            - If evidence count is 0, do NOT mention files, attachments, or verification of files.
             
-            END WITH: 'SUGGESTED_EMAIL: ' (followed by raw email).
+            SIGN-OFF: Sincerely, {user_name}. Supported by TRI.
+            END WITH: 'SUGGESTED_EMAIL: ' (raw email address only).
             """
             response = client.chat.completions.create(
                 model="gpt-4o-mini",
@@ -174,11 +173,11 @@ if "letter" in st.session_state:
     
     col_to, col_cc, col_bcc = st.columns(3)
     with col_to:
-        rec_to = st.text_input("To (Primary):", value=st.session_state.sug_email, help="Edit or add multiple emails with commas.")
+        rec_to = st.text_input("To (Primary):", value=st.session_state.sug_email)
     with col_cc:
-        rec_cc = st.text_input("CC (Public):", placeholder="dm@nic.in, news@media.com")
+        rec_cc = st.text_input("CC (Public):", placeholder="news@media.com")
     with col_bcc:
-        rec_bcc = st.text_input("BCC (Secret Archive):", value="archive@reminderindia.com")
+        rec_bcc = st.text_input("BCC (TRI Archive):", value="archive@reminderindia.com")
 
     col_btn1, col_btn2 = st.columns(2)
     with col_btn1:
