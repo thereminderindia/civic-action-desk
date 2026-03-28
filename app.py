@@ -21,11 +21,10 @@ try:
 except:
     st.sidebar.error("Database connection issue.")
 
-# --- NEW: EMAIL VALIDATION HELPER ---
+# EMAIL VALIDATION HELPER
 def is_valid_email(email_str):
     if not email_str.strip():
-        return True  # Allow empty for CC/BCC
-    # Support multiple emails separated by commas
+        return True 
     emails = [e.strip() for e in email_str.split(',')]
     pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
     return all(re.match(pattern, e) for e in emails if e)
@@ -82,9 +81,9 @@ lang_col, pin_col, details_col = st.columns([2, 2, 4])
 with lang_col:
     target_language = st.selectbox("Select Letter Language:", 
         ["English", "Hindi (हिन्दी)", "Bengali (বাংলা)", "Marathi (मराठी)", 
-         "Telugu (తెలుగు)", "Tamil (தமிழ்)", "Gujarati (ગુજરાતી)", 
+         "Telugu (తెలుగు)", "Tamil (தமிழ்)", "Gujarati (ગુજરાਤੀ)", 
          "Urdu (اردو)", "Kannada (କನ್ನಡ)", "Odia (ଓଡ଼ିଆ)", 
-         "Malayalam (മലയാളം)", "Punjabi (ਪੰਜਾਬੀ)", "Assamese (অસમୀয়া)", 
+         "Malayalam (മലയാളം)", "Punjabi (ਪੰਜਾਬੀ)", "Assamese (অসমੀয়া)", 
          "Maithili (मैथिली)", "Santali (संताली)", "Kashmiri (کٲशُر)", 
          "Nepali (नेपाली)", "Konkani (कोंकਣੀ)", "Sindhi (سنڌي)", 
          "Dogri (डोगरी)", "Manipuri (মৈতৈলোন)", "Bodo (बर')", "Sanskrit (संस्कृतम्)"])
@@ -108,9 +107,9 @@ with details_col:
             # --- SIDEBAR SEARCH TOOL ---
             st.sidebar.markdown("---")
             st.sidebar.subheader("🔍 Find Official Email")
-            search_q = f"official email municipal commissioner {selected_loc['Town']} {selected_loc['District']} site:.gov.in OR site:.nic.in"
-            g_url = f"https://www.google.com/search?q={urllib.parse.quote(search_q)}"
-            st.sidebar.link_button(f"🌐 Search for {selected_loc['Town']} Email", g_url)
+            search_query = f"official email municipal commissioner {selected_loc['Town']} {selected_loc['District']} site:.gov.in OR site:.nic.in"
+            google_url = f"https://www.google.com/search?q={urllib.parse.quote(search_query)}"
+            st.sidebar.link_button(f"🌐 Search for {selected_loc['Town']} Email", google_url)
         else:
             st.error("❌ PIN not found in database.")
 
@@ -138,29 +137,43 @@ issue = st.text_area("Describe the local problem:")
 
 # 6. STEP 3: GENERATION
 if st.button("🚀 1. Generate Official Letter"):
-    if not user_name or not selected_loc or not issue or len(user_pin) != 6:
-        st.error("⚠️ Please check PIN (6 digits) and Name/Issue fields.")
+    is_pin_valid = len(user_pin) == 6
+    is_phone_valid = not user_phone or (user_phone.isdigit() and len(user_phone) == 10)
+
+    if not is_pin_valid or not is_phone_valid or not user_name or not selected_loc or not issue:
+        st.error("⚠️ Please fix the errors in PIN, Phone, or Name before generating.")
     else:
-        with st.spinner(f"Drafting petition..."):
-            contact_text = f"Contact Number: {user_phone}" if user_phone.strip() else "NOT_PROVIDED"
+        with st.spinner(f"Drafting formal petition..."):
+            # Hard-coded string construction to force visibility
+            phone_val = user_phone.strip()
+            contact_line = f"Contact: {phone_val}" if phone_val else "NO_PHONE"
             gps_val = st.session_state.get('gps_coord', 'NOT_CAPTURED')
             evidence_count = len(uploaded_files) if uploaded_files else 0
 
             system_prompt = f"""
             Draft a professional civic complaint in {target_language}.
             
-            STRICT STRUCTURE:
-            1. TOP RIGHT DATE: {current_date}
-            2. FROM: Name: {user_name}. (Include '{contact_text}' ONLY if it is not 'NOT_PROVIDED').
-            3. TO: The Municipal Commissioner, {selected_loc['Town']}, {selected_loc['District']}. PIN: {selected_loc['PIN']}
+            STRICT LAYOUT RULES:
+            1. DATE (TOP RIGHT): '{current_date}'
+            2. FROM SECTION: 
+               From,
+               Name: {user_name}
+               {f'Contact: {phone_val}' if phone_val else ''}
+            3. TO SECTION: 
+               To,
+               The Municipal Commissioner,
+               {selected_loc['Town']}, {selected_loc['District']}.
+               PIN: {selected_loc['PIN']}
             4. BODY: 
-               - Para 1: Issue based on input.
-               - Para 2: Mention GPS: {gps_val}. (If NOT_CAPTURED, ask for on-ground verification).
-               - Para 3: If evidence files > 0, mention attachments.
-            5. CLOSING (MANDATORY): Sincerely, {user_name}. Supported by The Reminder India community.
-            
-            RULES: RAW TEXT ONLY. NO backticks (```). NO placeholder emails.
-            END WITH: 'SUGGESTED_EMAIL: '
+               - State issue: {issue}
+               - Mention GPS: {gps_val} (If NOT_CAPTURED, ask for ground verification).
+               - Mention evidence ONLY if evidence count is {evidence_count} > 0.
+            5. SIGN-OFF: Sincerely, {user_name}. Supported by The Reminder India community.
+
+            RULES:
+            - If phone is provided, you MUST include it in the 'From' section.
+            - RAW TEXT ONLY. NO backticks (```).
+            - END WITH: 'SUGGESTED_EMAIL: ' (Give the most likely .gov.in or .nic.in email).
             """
             response = client.chat.completions.create(
                 model="gpt-4o-mini",
@@ -169,9 +182,9 @@ if st.button("🚀 1. Generate Official Letter"):
             res_content = response.choices[0].message.content.replace("```", "").strip()
             st.session_state.letter = res_content.split("SUGGESTED_EMAIL:")[0].strip()
             raw_email = res_content.split("SUGGESTED_EMAIL:")[1].strip() if "SUGGESTED_EMAIL:" in res_content else ""
-            st.session_state.sug_email = raw_email.replace("`", "").strip()
+            st.session_state.sug_email = raw_email.replace("`", "").replace("'", "").strip()
 
-# 7. STEP 4: REVIEW & MULTI-SEND WITH EMAIL VALIDATION
+# 7. STEP 4: REVIEW & MULTI-SEND
 if "letter" in st.session_state:
     st.divider()
     st.subheader("📬 Step 4: Final Review & Email Controls")
@@ -181,7 +194,7 @@ if "letter" in st.session_state:
     with col_to:
         rec_to = st.text_input("To (Primary Official):", value=st.session_state.sug_email)
     with col_cc:
-        rec_cc = st.text_input("CC (Public Copy):", value="", placeholder="e.g. news@media.com")
+        rec_cc = st.text_input("CC (Public Copy):", value="")
     with col_bcc:
         rec_bcc = st.text_input("BCC (Secret Archive):", value="")
 
@@ -189,20 +202,13 @@ if "letter" in st.session_state:
     with col_btn1:
         pdf_bytes = create_pdf(st.session_state.letter)
         st.download_button("📥 Download Print PDF", data=pdf_bytes, file_name=f"TRI_Report_{user_pin}.pdf")
-    
     with col_btn2:
         if st.button("📧 Send Official Email Now"):
-            # STRICT VALIDATION CHECK
-            to_valid = is_valid_email(rec_to) if rec_to else False
-            cc_valid = is_valid_email(rec_cc)
-            bcc_valid = is_valid_email(rec_bcc)
-
-            if not to_valid:
-                st.error("❌ Invalid Primary Email Address. Please use format name@domain.com")
-            elif not cc_valid:
-                st.error("❌ Invalid CC Email Address.")
-            elif not bcc_valid:
-                st.error("❌ Invalid BCC Email Address.")
+            # Validation
+            if not is_valid_email(rec_to) or not is_valid_email(rec_cc) or not is_valid_email(rec_bcc):
+                st.error("❌ One or more email addresses are invalid. Please check the format.")
+            elif not rec_to:
+                st.error("❌ Recipient email is required.")
             else:
                 with st.spinner("Sending..."):
                     try:
@@ -220,7 +226,7 @@ if "letter" in st.session_state:
                         smtp.login(SENDER_EMAIL, APP_PASSWORD)
                         smtp.send_message(msg)
                         smtp.quit()
-                        st.success("✅ Reported Successfully!")
+                        st.success("✅ Sent Successfully!")
                         st.balloons()
                     except Exception as e:
                         st.error(f"Error: {e}")
