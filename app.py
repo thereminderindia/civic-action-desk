@@ -14,11 +14,10 @@ SENDER_EMAIL = st.secrets["SENDER_EMAIL"]
 APP_PASSWORD = st.secrets["APP_PASSWORD"]
 current_date = datetime.now().strftime("%B %d, %Y")
 
-# Connect to Google Sheets
 try:
     conn = st.connection("gsheets", type=GSheetsConnection)
-except Exception as e:
-    st.sidebar.error("GSheets Connection Error. Check your Secrets.")
+except:
+    st.sidebar.error("Database connection issue.")
 
 # 2. PDF Function
 def create_pdf(text):
@@ -31,8 +30,7 @@ def create_pdf(text):
 
 # 3. Interface & Branding
 st.set_page_config(page_title="The Reminder India", page_icon="🏛️")
-
-# Replace with your actual YouTube Logo Link
+# Paste your permanent logo link here
 logo_url = "https://www.facebook.com/photo/?fbid=122097222099239425&set=pb.61587182761969.-2207520000" 
 
 col1, col2 = st.columns([1, 4])
@@ -42,67 +40,73 @@ with col2:
     st.title("The Reminder India")
     st.subheader("National Civic Action Desk")
 
-# Sidebar Stats
-try:
-    existing_data = conn.read(ttl="1m")
-    if not existing_data.empty:
-        st.sidebar.metric("Total Complaints Filed", len(existing_data))
-except:
-    st.sidebar.info("Database initializing...")
-
 # 4. LOCATION SECTION
 st.markdown("### 📍 Location Details")
 loc_col1, loc_col2 = st.columns([2, 1])
 
 with loc_col2:
-    # Captures GPS from phone/browser
     if st.button("🛰️ Use GPS"):
         location = streamlit_js_eval(data_key='pos', func_name='getCurrentPosition', want_output=True)
         if location:
             lat = location['coords']['latitude']
             lon = location['coords']['longitude']
-            st.session_state.lat_lon = f"Latitude: {lat}, Longitude: {lon}"
-            st.success("Location Captured!")
-        else:
-            st.warning("Please allow location access.")
+            st.session_state.lat_lon = f"Lat: {lat}, Lon: {lon}"
+            st.success("GPS Captured!")
 
 with loc_col1:
-    pincode = st.text_input("6-Digit Pincode:", value=st.session_state.get('pincode', ""), max_chars=6)
+    pincode = st.text_input("6-Digit Pincode:", value="247775", max_chars=6)
 
 # 5. User Inputs
-user_name = st.text_input("Full Name (Sender):")
-user_phone = st.text_input("Contact Number (Optional):")
+user_name = st.text_input("Full Name (Sender):", placeholder="Your name will appear in the letter")
+user_phone = st.text_input("Contact Number (Optional):", placeholder="Must be 10 digits")
 uploaded_files = st.file_uploader("Attach Evidence:", type=["jpg", "png", "jpeg", "mp4", "mov"], accept_multiple_files=True)
 issue = st.text_area("Describe the local problem:")
 
 # 6. Smart AI Generation
 if st.button("🚀 1. Generate Official Letter"):
-    # Use GPS if available, otherwise use Pincode
-    location_to_use = st.session_state.get('lat_lon', pincode)
-    
-    if not location_to_use or not issue:
-        st.error("Please provide a location (Pincode or GPS) and describe the issue.")
+    # Phone Validation
+    if user_phone and (not user_phone.isdigit() or len(user_phone) != 10):
+        st.error("⚠️ Contact number must be exactly 10 digits.")
+    elif not user_name or not issue:
+        st.error("⚠️ Please provide your Name and describe the Issue.")
     else:
-        with st.spinner("AI is analyzing location and drafting..."):
+        with st.spinner("Drafting letter..."):
+            location_data = st.session_state.get('lat_lon', pincode)
+            
             system_prompt = f"""
-            You are a Senior Civic Advocate. Draft a formal complaint based on these rules:
+            You are a Senior Civic Advocate. Draft a formal complaint letter with this EXACT structure:
+
+            [HEADER]
+            {user_name}
+            Pincode: {pincode}
+            {f"Contact: {user_phone}" if user_phone else ""} 
+
+            {current_date}
+
+            [RECIPIENT]
+            To Whom It May Concern,
+            Municipal Corporation,
+            Kandhla, Uttar Pradesh (If Pincode is 247775)
+
+            [SUBJECT]
+            Subject: Formal Complaint Regarding {issue[:30]}...
+
+            [BODY]
+            Write a professional 3-paragraph letter. 
+            - Paragraph 1: State the problem at {pincode}.
+            - Paragraph 2: Explain the risks (health, safety, mosquitoes).
+            - Paragraph 3: Urge immediate action.
+
+            Sincerely,
+            {user_name}
+            Supported by The Reminder India community.
+
+            STRICT RULES:
+            - If contact number is missing, leave that line BLANK. Do NOT write "Not provided".
+            - Put the sender name {user_name} at the top and after Sincerely.
+            - Do NOT include any placeholder brackets like [City, State]. Use Kandhla, Uttar Pradesh for 247775.
             
-            LOCATION DATA: {location_to_use}
-            - If Pincode is 247775, the location is KANDHLA, UTTAR PRADESH.
-            - If GPS coordinates are provided, identify the city and state.
-            
-            SENDER SECTION:
-            - Name: {user_name}
-            - Pincode: {pincode if pincode else 'Detected via GPS'}
-            - Contact: {user_phone if user_phone else 'Not provided'}
-            - NO street address. NO sender email in the text body.
-            
-            CONTENT:
-            - DATE: {current_date}
-            - Sign off: 'Sincerely, {user_name}'. 
-            - Mention: 'Supported by The Reminder India community.'
-            
-            END with 'SUGGESTED_EMAIL: ' followed by the likely municipal email.
+            At the end, add 'SUGGESTED_EMAIL: ' followed by the likely municipal email.
             """
             
             response = client.chat.completions.create(
@@ -122,9 +126,9 @@ if st.button("🚀 1. Generate Official Letter"):
 # 7. Review & Send
 if "letter" in st.session_state:
     st.divider()
-    st.text_area("Final Letter Draft:", value=st.session_state.letter, height=400)
+    st.text_area("Final Letter Draft:", value=st.session_state.letter, height=450)
     pdf_bytes = create_pdf(st.session_state.letter)
-    st.download_button("📥 Download PDF", data=pdf_bytes, file_name=f"Complaint_Letter.pdf")
+    st.download_button("📥 Download PDF", data=pdf_bytes, file_name=f"Complaint_{pincode}.pdf")
 
     recipient = st.text_input("Authority Email:", value=st.session_state.suggested_email)
 
@@ -134,7 +138,7 @@ if "letter" in st.session_state:
                 try:
                     msg = EmailMessage()
                     msg.set_content(st.session_state.letter)
-                    msg['Subject'] = f"CIVIC COMPLAINT: Reported by {user_name}"
+                    msg['Subject'] = f"CIVIC COMPLAINT: {pincode} - {user_name}"
                     msg['From'] = SENDER_EMAIL
                     msg['To'] = recipient
                     if uploaded_files:
@@ -145,19 +149,17 @@ if "letter" in st.session_state:
                     smtp.login(SENDER_EMAIL, APP_PASSWORD)
                     smtp.send_message(msg)
                     smtp.quit()
+                    
+                    # Log to GSheets
+                    new_entry = pd.DataFrame([{"Timestamp": datetime.now(), "Name": user_name, "Pincode": pincode, "Issue": issue[:100], "Recipient": recipient}])
+                    try:
+                        existing = conn.read()
+                        updated = pd.concat([existing, new_entry], ignore_index=True)
+                        conn.update(data=updated)
+                    except:
+                        conn.create(data=new_entry)
 
-                    # Database Logging
-                    new_entry = pd.DataFrame([{
-                        "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                        "Name": user_name,
-                        "Pincode": pincode,
-                        "Issue": issue[:100],
-                        "Recipient": recipient
-                    }])
-                    all_data = pd.concat([existing_data, new_entry], ignore_index=True)
-                    conn.update(data=all_data)
-
-                    st.success("Sent & Recorded Successfully!")
+                    st.success("Sent & Recorded!")
                     st.balloons()
                 except Exception as e:
                     st.error(f"Error: {e}")
