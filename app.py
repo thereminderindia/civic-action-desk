@@ -42,20 +42,21 @@ def create_pdf(text):
             pdf.multi_cell(0, 10, txt=line, align='L')
     return pdf.output(dest='S').encode('latin-1', 'ignore')
 
-# 3. INTERFACE & SIDEBAR (ALL LINKS RESTORED)
+# 3. INTERFACE & SIDEBAR
 st.set_page_config(page_title="The Reminder India", page_icon="🏛️", layout="wide")
 
 st.sidebar.title("📲 Connect with TRI")
-st.sidebar.link_button("📺 YouTube", "[https://youtube.com/@TheReminderIndia]")
-st.sidebar.link_button("🔵 Facebook", "[https://facebook.com/TheReminderIndia]")
-st.sidebar.link_button("📸 Instagram", "[https://instagram.com/TheReminderIndia]")
+st.sidebar.link_button("📺 YouTube", "https://youtube.com/@TheReminderIndia")
+st.sidebar.link_button("🔵 Facebook", "https://facebook.com/TheReminderIndia")
+st.sidebar.link_button("📸 Instagram", "https://instagram.com/TheReminderIndia")
 st.sidebar.markdown("---")
 st.sidebar.title("🛠️ Tools")
-st.sidebar.link_button("🔍 Pincode Verify", "[https://www.indiapost.gov.in/VAS/Pages/findpincode.aspx]")
+st.sidebar.link_button("🔍 Pincode Verify", "https://www.indiapost.gov.in/VAS/Pages/findpincode.aspx")
 
 pincode_df = load_pincode_db()
 
 # Branding
+# Note: Using a direct image URL is recommended for st.image
 logo_url = "https://www.facebook.com/photo/?fbid=122097222099239425&set=pb.61587182761969.-2207520000" 
 col_logo, col_title = st.columns([1, 5])
 with col_logo:
@@ -77,7 +78,7 @@ with lang_col:
          "Malayalam (മലയാളം)", "Punjabi (ਪੰਜਾਬੀ)", "Assamese (অসমੀয়া)", 
          "Maithili (मैथिली)", "Santali (संताली)", "Kashmiri (کٲशُر)", 
          "Nepali (नेपाली)", "Konkani (कोंकਣੀ)", "Sindhi (سنڌي)", 
-         "Dogri (ਡੋਗਰੀ)", "Manipuri (মৈতৈলোন)", "Bodo (बर')", "Sanskrit (संस्कृतम्)"])
+         "Dogri (डोगरी)", "Manipuri (মৈতৈলোন)", "Bodo (बर')", "Sanskrit (संस्कृतम्)"])
 
 with pin_col:
     user_pin = st.text_input("Enter 6-Digit PIN:", value="", max_chars=6)
@@ -93,11 +94,18 @@ with details_col:
             office_list = matches['officename'].unique().tolist()
             chosen_office = st.selectbox("Confirm Town/City:", office_list)
             row = matches[matches['officename'] == chosen_office].iloc[0]
-            # MAPPING AS REQUESTED: officename=Town, district=District, circlename=State
             selected_loc = {"Town": row['officename'], "District": row['district'], "State": row['circlename'], "PIN": user_pin}
             st.success(f"✅ Area: {selected_loc['Town']}, {selected_loc['District']}")
         else:
             st.error("❌ PIN not found in database.")
+
+# DYNAMIC SIDEBAR TOOL: Official Email Search (Based on Selection)
+if selected_loc:
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("🔍 Find Official Email")
+    search_query = f"official email of municipal commissioner {selected_loc['Town']} {selected_loc['District']} site:.gov.in OR site:.nic.in"
+    google_url = f"https://www.google.com/search?q={urllib.parse.quote(search_query)}"
+    st.sidebar.link_button(f"🌐 Search for {selected_loc['Town']} Email", google_url)
 
 # GPS & File Uploads
 col_gps, col_files = st.columns(2)
@@ -122,7 +130,7 @@ if user_phone and (not user_phone.isdigit() or len(user_phone) != 10):
 
 issue = st.text_area("Describe the local problem:")
 
-# 6. STEP 3: GENERATION (FORCE CONTACT VISIBILITY)
+# 6. STEP 3: GENERATION
 if st.button("🚀 1. Generate Official Letter"):
     is_pin_valid = user_pin.isdigit() and len(user_pin) == 6
     is_phone_valid = not user_phone or (user_phone.isdigit() and len(user_phone) == 10)
@@ -145,12 +153,12 @@ if st.button("🚀 1. Generate Official Letter"):
             STRICT LAYOUT:
             1. DATE (TOP RIGHT): '{current_date}'
             
-            2. FROM SECTION (Left Aligned):
+            2. FROM SECTION:
                From,
                Name: {user_name}
                {contact_text}
             
-            3. TO SECTION (Left Aligned):
+            3. TO SECTION:
                To,
                The Municipal Commissioner,
                {selected_loc['Town']}, {selected_loc['District']}.
@@ -160,11 +168,10 @@ if st.button("🚀 1. Generate Official Letter"):
             5. SIGN-OFF: Sincerely, {user_name}. Supported by The Reminder India community.
             
             STRICT RULES:
-            - If contact number is provided ({user_phone}), you MUST include the line "{contact_text}" in the 'From' section.
+            - If contact number is provided ({user_phone}), you MUST include the line "{contact_text}" in the 'From' section. 
+            - If no phone is provided, do NOT include any contact line.
             - Ensure PIN is ONLY shown in the 'To' section address.
-            - RAW OUTPUT ONLY for email. Do NOT use backticks or markdown formatting for the email address.
-            
-            END WITH: 'SUGGESTED_EMAIL: ' (followed by raw email).
+            - Provide ONLY raw email after 'SUGGESTED_EMAIL:'. No backticks or code blocks.
             """
             response = client.chat.completions.create(
                 model="gpt-4o-mini",
@@ -173,11 +180,11 @@ if st.button("🚀 1. Generate Official Letter"):
             res_content = response.choices[0].message.content
             st.session_state.letter = res_content.split("SUGGESTED_EMAIL:")[0].strip()
             
-            # EMAIL EXTRACTION & CLEANING (FIXES THE ``` ISSUE)
+            # EMAIL EXTRACTION & CLEANING
             raw_email = res_content.split("SUGGESTED_EMAIL:")[1].strip()
             st.session_state.sug_email = raw_email.replace("`", "").replace("'", "").strip()
 
-# 7. STEP 4: REVIEW & MULTI-SEND (INTERACTIVE EMAIL BOXES)
+# 7. STEP 4: REVIEW & MULTI-SEND
 if "letter" in st.session_state:
     st.divider()
     st.subheader("📬 Step 4: Final Review & Email Controls")
@@ -185,11 +192,11 @@ if "letter" in st.session_state:
     
     col_to, col_cc, col_bcc = st.columns(3)
     with col_to:
-        rec_to = st.text_input("To (Primary):", value=st.session_state.sug_email, help="Delete or change as needed. Use commas for multiple.")
+        rec_to = st.text_input("To (Primary):", value=st.session_state.sug_email, help="Edit or add multiple emails with commas.")
     with col_cc:
         rec_cc = st.text_input("CC (Public):", placeholder="news@media.com, dm@gov.in")
     with col_bcc:
-        rec_bcc = st.text_input("BCC (Secret Archive):", placeholder="archive@tri.com")
+        rec_bcc = st.text_input("BCC (Secret Archive):", value="archive@reminderindia.com")
 
     col_btn1, col_btn2 = st.columns(2)
     with col_btn1:
