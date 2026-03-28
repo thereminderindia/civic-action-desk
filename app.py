@@ -64,7 +64,6 @@ except:
     st.sidebar.info("Initializing database...")
 
 # Branding Header
-# Note: Ensure this URL is a direct image link
 logo_url = "https://www.facebook.com/photo.php?fbid=122097222099239425&set=pb.61587182761969.-2207520000&type=3" 
 
 col1, col2 = st.columns([1, 4])
@@ -111,7 +110,7 @@ if st.button("🚀 1. Generate Official Letter"):
         st.error("⚠️ Please fill in Name, Pincode/GPS, and Issue.")
     else:
         with st.spinner(f"Drafting formal letter in {target_language}..."):
-            # Prepare Location String for AI
+            # Prepare Location String
             if isinstance(loc_info, dict):
                 loc_str = f"{loc_info['Area']}, {loc_info['District']}, {loc_info['State']}"
                 st.sidebar.success("📍 Location: Official Records")
@@ -119,30 +118,36 @@ if st.button("🚀 1. Generate Official Letter"):
                 loc_str = f"Pincode {pincode} (AI to identify Area/City/State)"
                 st.sidebar.info("📍 Location: AI Identified")
             
+            # STRICTOR CONTACT LOGIC: Only create the line if a valid phone is entered
+            contact_line = f"Contact: {user_phone}" if user_phone.strip() else ""
+
             system_prompt = f"""
             You are a Senior Civic Advocate. 
             TASK: Draft a formal complaint in {target_language}.
             
-            FACTUAL DATA:
-            - Date: {current_date}
-            - Sender: {user_name}
+            SENDER DATA:
+            - Name: {user_name}
             - Pincode: {pincode if pincode else 'GPS Detected'}
-            - Location Hint: {loc_str}
-            - Contact: {user_phone if user_phone else ""}
+            - {contact_line}
+            - Verified Location: {loc_str}
+            - Date: {current_date}
             
-            STRUCTURE:
-            1. Sender Header: Name, Pincode, Contact (Remove if blank).
-            2. Recipient: Municipal Commissioner/Executive Officer of the identified District.
-            3. Subject: Formal Complaint regarding {issue[:30]}...
-            4. Body: 3 paragraphs in {target_language}.
-            5. Sign-off: Sincerely, {user_name}. Supported by The Reminder India community.
+            STRICT FORMATTING RULES:
+            1. If the 'SENDER DATA' above does not contain a Contact line, do NOT mention contact info at all.
+            2. NEVER write "[Contact: Not provided]" or any placeholder text. If it is empty, skip the line entirely.
+            3. Sign off exactly as: 
+               Sincerely, 
+               {user_name}
+            4. Add the line: "Supported by The Reminder India community."
+            5. Identify the Recipient (Municipal Commissioner/EO) based on: {loc_str}.
+            6. Body: 3 paragraphs in {target_language}.
             
             TASK 2: Translation for Admin.
             FORMAT:
             [LETTER_START]
             (Letter content)
             [LETTER_END]
-            [ENGLISH_SUMMARY]: (1-sentence English translation of issue)
+            [ENGLISH_SUMMARY]: (1-sentence English translation)
             [SUGGESTED_EMAIL]: (Official municipal email)
             """
             
@@ -167,7 +172,7 @@ if "letter" in st.session_state:
     st.subheader(f"Generated Letter ({target_language})")
     st.text_area("Final Draft:", value=st.session_state.letter, height=400)
     
-    # PDF
+    # PDF Download
     pdf_bytes = create_pdf(st.session_state.letter)
     st.download_button("📥 Download PDF", data=pdf_bytes, file_name=f"Complaint_{pincode}.pdf")
 
