@@ -7,7 +7,6 @@ from fpdf import FPDF
 import pandas as pd
 from datetime import datetime
 from streamlit_gsheets import GSheetsConnection
-from streamlit_js_eval import streamlit_js_eval
 import urllib.parse
 
 # 1. AUTHENTICATION & SETUP
@@ -16,29 +15,30 @@ SENDER_EMAIL = st.secrets["SENDER_EMAIL"]
 APP_PASSWORD = st.secrets["APP_PASSWORD"]
 current_date = datetime.now().strftime("%B %d, %Y")
 
-# Connect to Google Sheets
 try:
     conn = st.connection("gsheets", type=GSheetsConnection)
 except:
-    st.sidebar.error("Database connection issue. Check Secrets.")
+    st.sidebar.error("GSheets connection error.")
 
-# 2. HELPER FUNCTIONS
-def get_pincode_details(pin):
-    """Fetches official data from India Post, falls back to AI if API fails"""
+# 2. THE VALIDATION GATEWAY
+def get_official_post_office_data(pin):
+    """Fetches real-time data from India Post. No AI guessing allowed here."""
     try:
-        response = requests.get(f"https://api.postalpincode.in/pincode/{pin}", timeout=3)
+        # We hit the official public records API
+        response = requests.get(f"https://api.postalpincode.in/pincode/{pin}", timeout=5)
         data = response.json()
+        
         if data[0]['Status'] == 'Success' and data[0]['PostOffice']:
-            post_office = data[0]['PostOffice'][0]
+            # We take the first reliable record from the official list
+            office = data[0]['PostOffice'][0]
             return {
-                "Area": post_office['Name'],
-                "District": post_office['District'],
-                "State": post_office['State'],
-                "Source": "Official Records"
+                "Area": office['Name'],
+                "District": office['District'],
+                "State": office['State']
             }
-    except:
-        pass 
-    return "AI_FALLBACK"
+    except Exception as e:
+        return {"error": "Connection to India Post failed. Try again in a moment."}
+    return None
 
 def create_pdf(text):
     pdf = FPDF()
@@ -48,22 +48,8 @@ def create_pdf(text):
         pdf.multi_cell(0, 10, txt=line, align='L')
     return pdf.output(dest='S').encode('latin-1', 'ignore')
 
-# 3. INTERFACE & SIDEBAR
-st.set_page_config(page_title="The Reminder India", page_icon="🏛️", layout="centered")
-
-st.sidebar.title("🛠️ Verification Tools")
-st.sidebar.link_button("🔍 Official Pincode Search", "https://www.indiapost.gov.in/VAS/Pages/findpincode.aspx")
-st.sidebar.markdown("---")
-
-# Stats Sidebar
-try:
-    existing_data = conn.read(ttl="1m")
-    if not existing_data.empty:
-        st.sidebar.metric("Total Complaints Filed", len(existing_data))
-except:
-    st.sidebar.info("Initializing database...")
-
-# Branding Header
+# 3. INTERFACE
+st.set_page_config(page_title="The Reminder India", page_icon="🏛️")
 logo_url = "https://www.facebook.com/photo.php?fbid=122097222099239425&set=pb.61587182761969.-2207520000&type=3" 
 
 col1, col2 = st.columns([1, 4])
@@ -73,82 +59,69 @@ with col2:
     st.title("The Reminder India")
     st.subheader("National Civic Action Desk")
 
-# 4. SETTINGS & LOCATION
+# 4. INPUTS
 st.markdown("---")
 lang_col, loc_col = st.columns(2)
-
 with lang_col:
-    target_language = st.selectbox("Select Letter Language:", 
-        ["English", "Hindi (हिन्दी)", "Punjabi (ਪੰਜਾਬੀ)", "Bengali (বাংলা)", 
-         "Marathi (मराठी)", "Tamil (தமிழ்)", "Telugu (తెలుగు)", 
-         "Spanish (Español)", "French (Français)"])
-
+    target_language = st.selectbox("Letter Language:", ["English", "Hindi (हिन्दी)", "Punjabi (ਪੰਜਾਬੀ)", "Bengali (বাংলা)", "Marathi (मराठी)", "Tamil (தமிழ்)", "Telugu (తెలుగు)"])
 with loc_col:
-    pincode = st.text_input("6-Digit Pincode:", value="", max_chars=6, placeholder="e.g. 247776")
+    pincode = st.text_input("Enter 6-Digit Pincode:", value="", max_chars=6, placeholder="e.g. 247775")
 
-# GPS Option
-if st.button("🛰️ Use Current GPS Location"):
-    location = streamlit_js_eval(data_key='pos', func_name='getCurrentPosition', want_output=True)
-    if location:
-        st.session_state.lat_lon = f"Lat: {location['coords']['latitude']}, Lon: {location['coords']['longitude']}"
-        st.success("GPS Location Captured!")
-
-# 5. USER INPUTS
 user_name = st.text_input("Full Name (Sender):")
-user_phone = st.text_input("Contact Number (Optional):", placeholder="10 Digits")
-uploaded_files = st.file_uploader("Attach Evidence (Photos/Videos):", accept_multiple_files=True)
+user_phone = st.text_input("Contact Number (Optional):", placeholder="10 digits")
 issue = st.text_area("Describe the local problem:")
 
-# 6. SMART GENERATION LOGIC
+# 5. GENERATION LOGIC WITH DATA LOCK
 if st.button("🚀 1. Generate Official Letter"):
-    # Hybrid Location Check
-    loc_info = get_pincode_details(pincode) if pincode else None
-    
-    if user_phone and (len(user_phone) != 10 or not user_phone.isdigit()):
-        st.error("⚠️ Contact number must be exactly 10 digits.")
-    elif not user_name or not (pincode or st.session_state.get('lat_lon')) or not issue:
-        st.error("⚠️ Please fill in Name, Pincode/GPS, and Issue.")
-    else:
-        with st.spinner(f"Drafting formal letter in {target_language}..."):
-            # Prepare Location String
-            if isinstance(loc_info, dict):
-                loc_str = f"{loc_info['Area']}, {loc_info['District']}, {loc_info['State']}"
-                st.sidebar.success("📍 Location: Official Records")
-            else:
-                loc_str = f"Pincode {pincode} (AI to identify Area/City/State)"
-                st.sidebar.info("📍 Location: AI Identified")
-            
-            # STRICTOR CONTACT LOGIC: Only create the line if a valid phone is entered
-            contact_line = f"Contact: {user_phone}" if user_phone.strip() else ""
+    # STEP 1: Fetch Official Data (The Gatekeeper)
+    official_data = get_official_post_office_data(pincode)
 
+    if not pincode or len(pincode) != 6:
+        st.error("⚠️ Please enter a valid 6-digit Pincode.")
+    elif not official_data:
+        st.error(f"❌ Pincode {pincode} not found in India Post Records. Please check and try again.")
+    elif "error" in official_data:
+        st.error(official_data["error"])
+    elif not user_name or not issue:
+        st.error("⚠️ Please provide your Name and Issue description.")
+    else:
+        # STEP 2: Pass ONLY official data to the AI
+        with st.spinner(f"Official Record Found: {official_data['Area']}. Drafting letter..."):
+            
+            # Format the Sender Contact line
+            contact_info = f"Contact: {user_phone}" if user_phone.strip() else ""
+            
+            # This prompt locks the AI into the official data
             system_prompt = f"""
             You are a Senior Civic Advocate. 
+            
+            STRICT LOCATION DATA (Provided by India Post):
+            Area: {official_data['Area']}
+            District: {official_data['District']}
+            State: {official_data['State']}
+            Pincode: {pincode}
+
             TASK: Draft a formal complaint in {target_language}.
             
-            SENDER DATA:
-            - Name: {user_name}
-            - Pincode: {pincode if pincode else 'GPS Detected'}
-            - {contact_line}
-            - Verified Location: {loc_str}
-            - Date: {current_date}
+            STRUCTURE:
+            1. HEADER: {user_name}, Pincode: {pincode}. {contact_info}
+            2. DATE: {current_date}
+            3. RECIPIENT: 
+               To,
+               The Municipal Commissioner / Executive Officer,
+               {official_data['Area']} Municipality,
+               District: {official_data['District']}, {official_data['State']}.
             
-            STRICT FORMATTING RULES:
-            1. If the 'SENDER DATA' above does not contain a Contact line, do NOT mention contact info at all.
-            2. NEVER write "[Contact: Not provided]" or any placeholder text. If it is empty, skip the line entirely.
-            3. Sign off exactly as: 
-               Sincerely, 
-               {user_name}
-            4. Add the line: "Supported by The Reminder India community."
-            5. Identify the Recipient (Municipal Commissioner/EO) based on: {loc_str}.
-            6. Body: 3 paragraphs in {target_language}.
+            4. SUBJECT: Formal Complaint regarding {issue[:30]}...
+            5. SIGN-OFF: Sincerely, {user_name}. Supported by The Reminder India community.
+
+            STRICT RULES:
+            - Start the recipient section with 'To,'.
+            - Use ONLY the Location Data provided above. Do NOT suggest Nainital or any other city.
+            - If contact info is missing, leave that line completely blank.
+            - Entire body must be in {target_language}.
             
-            TASK 2: Translation for Admin.
-            FORMAT:
-            [LETTER_START]
-            (Letter content)
-            [LETTER_END]
-            [ENGLISH_SUMMARY]: (1-sentence English translation)
-            [SUGGESTED_EMAIL]: (Official municipal email)
+            At the end, add 'SUGGESTED_EMAIL: ' followed by the likely official email for {official_data['District']}.
             """
             
             response = client.chat.completions.create(
@@ -158,31 +131,26 @@ if st.button("🚀 1. Generate Official Letter"):
             
             full_res = response.choices[0].message.content
             try:
-                st.session_state.letter = full_res.split("[LETTER_START]")[1].split("[LETTER_END]")[0].strip()
-                st.session_state.eng_summary = full_res.split("[ENGLISH_SUMMARY]:")[1].split("[SUGGESTED_EMAIL]:")[0].strip()
-                st.session_state.suggested_email = full_res.split("[SUGGESTED_EMAIL]:")[1].strip()
+                st.session_state.letter = full_res.split("SUGGESTED_EMAIL:")[0].strip()
+                st.session_state.suggested_email = full_res.split("SUGGESTED_EMAIL:")[1].strip()
             except:
                 st.session_state.letter = full_res
-                st.session_state.eng_summary = "Processed."
                 st.session_state.suggested_email = ""
 
-# 7. REVIEW, SEND & SHARE
+# 6. REVIEW & SEND
 if "letter" in st.session_state:
     st.divider()
-    st.subheader(f"Generated Letter ({target_language})")
-    st.text_area("Final Draft:", value=st.session_state.letter, height=400)
+    st.text_area("Review Official Draft:", value=st.session_state.letter, height=400)
     
     # PDF Download
     pdf_bytes = create_pdf(st.session_state.letter)
     st.download_button("📥 Download PDF", data=pdf_bytes, file_name=f"Complaint_{pincode}.pdf")
 
-    st.markdown("---")
-    recipient = st.text_input("Authority Email(s):", value=st.session_state.suggested_email, placeholder="e.g. dm@gov.in, eo@gov.in")
-    st.caption("💡 Separate multiple emails with a comma.")
+    recipient = st.text_input("Authority Email(s):", value=st.session_state.suggested_email)
 
     if st.button("📧 2. Send Email Now"):
         if recipient:
-            with st.spinner("Sending and Logging..."):
+            with st.spinner("Sending..."):
                 try:
                     email_list = [e.strip() for e in recipient.split(",")]
                     msg = EmailMessage()
@@ -191,30 +159,17 @@ if "letter" in st.session_state:
                     msg['From'] = SENDER_EMAIL
                     msg['To'] = ", ".join(email_list)
                     
-                    if uploaded_files:
-                        for f in uploaded_files:
-                            msg.add_attachment(f.read(), maintype='application', subtype='octet-stream', filename=f.name)
-                    
                     smtp = smtplib.SMTP_SSL('smtp.gmail.com', 465)
                     smtp.login(SENDER_EMAIL, APP_PASSWORD)
                     smtp.send_message(msg)
                     smtp.quit()
                     
-                    # Log to Sheets
-                    new_entry = pd.DataFrame([{
-                        "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), 
-                        "Name": user_name, 
-                        "Pincode": pincode, 
-                        "Issue_English": st.session_state.eng_summary, 
-                        "Recipient": recipient
-                    }])
-                    all_data = pd.concat([existing_data, new_entry], ignore_index=True)
+                    # Log to GSheets
+                    new_entry = pd.DataFrame([{"Timestamp": datetime.now(), "Name": user_name, "Pincode": pincode, "Issue": issue[:100], "Recipient": recipient}])
+                    all_data = pd.concat([conn.read(), new_entry], ignore_index=True)
                     conn.update(data=all_data)
 
                     st.success("Sent Successfully!")
                     st.balloons()
-                    
-                    wa_url = f"https://wa.me/?text=I just reported a civic issue in {pincode} via TRI! Check: https://your-link.streamlit.app"
-                    st.link_button("📢 Share on WhatsApp", wa_url)
                 except Exception as e:
                     st.error(f"Error: {e}")
