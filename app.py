@@ -31,7 +31,8 @@ def create_pdf(text):
 
 # 3. Interface & Branding
 st.set_page_config(page_title="The Reminder India", page_icon="🏛️")
-logo_url = "https://scontent.fbek1-1.fna.fbcdn.net/v/t39.30808-6/622269601_1826245688085334_2578928589940005936_n.jpg?_nc_cat=105&ccb=1-7&_nc_sid=2a1932&_nc_ohc=wmBzMONziXEQ7kNvwH6AUeO&_nc_oc=AdqeW4G6uqRckWCQ80jKbeZPsVHWo9tuDh2Mq5UEsJMqrQ00SJILnWidT7XQgVBs80Xnd-AKiVKZzNCJgEqL0d41&_nc_zt=23&_nc_ht=scontent.fbek1-1.fna&_nc_gid=tZbtmbxF6DqH6Zoa2KT_xA&_nc_ss=7a32e&oh=00_AfwuRHj1dp4Zh6MqWK4-54tm1J6YT3CB-T3tFb1gKeRkmw&oe=69CE0649" 
+# Replace with your actual Logo Link
+logo_url = "https://www.facebook.com/photo.php?fbid=122097222099239425&set=pb.61587182761969.-2207520000&type=3" 
 
 col1, col2 = st.columns([1, 4])
 with col1:
@@ -47,11 +48,10 @@ lang_col, loc_col = st.columns(2)
 with lang_col:
     target_language = st.selectbox("Choose Language for Letter:", 
         ["English", "Hindi (हिन्दी)", "Punjabi (ਪੰਜਾਬੀ)", "Bengali (বাংলা)", 
-         "Marathi (मਰਾਠੀ)", "Tamil (தமிழ்)", "Telugu (తెలుగు)", 
+         "Marathi (मराठी)", "Tamil (தமிழ்)", "Telugu (తెలుగు)", 
          "Spanish (Español)", "French (Français)"])
 
 with loc_col:
-    # FIXED: Value is now empty by default
     pincode = st.text_input("6-Digit Pincode:", value="", max_chars=6, placeholder="Enter Pincode")
 
 # GPS Button
@@ -67,7 +67,7 @@ user_phone = st.text_input("Contact Number (Optional):")
 uploaded_files = st.file_uploader("Attach Evidence:", accept_multiple_files=True)
 issue = st.text_area("Describe the local problem (Type in any language):")
 
-# 6. Smart Multi-Language Generation & Translation
+# 6. Smart AI Generation
 if st.button("🚀 1. Generate Official Letter"):
     if user_phone and (not user_phone.isdigit() or len(user_phone) != 10):
         st.error("⚠️ Contact number must be exactly 10 digits.")
@@ -117,17 +117,30 @@ if "letter" in st.session_state:
     pdf_bytes = create_pdf(st.session_state.letter)
     st.download_button("📥 Download PDF", data=pdf_bytes, file_name=f"Complaint_{pincode}.pdf")
 
-    recipient = st.text_input("Authority Email:", value=st.session_state.suggested_email)
+    st.markdown("### Step 2: Recipient Details")
+    # IMPROVED: Fully editable email box that supports multiple emails
+    recipient = st.text_input(
+        "Authority Email(s):", 
+        value=st.session_state.get('suggested_email', ""), 
+        placeholder="e.g. officer1@gov.in, officer2@gov.in"
+    )
+    st.caption("💡 You can delete the suggestion above and type your own. Separate multiple emails with a comma.")
 
     if st.button("📧 2. Send Email Now"):
-        if recipient:
+        if not recipient:
+            st.error("Please provide at least one recipient email address.")
+        else:
             with st.spinner("Sending..."):
                 try:
+                    # Clean the email list (split by comma and remove spaces)
+                    email_list = [e.strip() for e in recipient.split(",")]
+                    
                     msg = EmailMessage()
                     msg.set_content(st.session_state.letter)
-                    msg['Subject'] = f"CIVIC COMPLAINT: {pincode} - {user_name}"
+                    msg['Subject'] = f"CIVIC COMPLAINT: {pincode if pincode else 'Local Area'} - {user_name}"
                     msg['From'] = SENDER_EMAIL
-                    msg['To'] = recipient
+                    msg['To'] = ", ".join(email_list)
+                    
                     if uploaded_files:
                         for f in uploaded_files:
                             msg.add_attachment(f.read(), maintype='application', subtype='octet-stream', filename=f.name)
@@ -138,7 +151,13 @@ if "letter" in st.session_state:
                     smtp.quit()
                     
                     # Log to GSheets
-                    new_entry = pd.DataFrame([{"Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Name": user_name, "Pincode": pincode, "Issue_English": st.session_state.eng_summary, "Recipient": recipient}])
+                    new_entry = pd.DataFrame([{
+                        "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), 
+                        "Name": user_name, 
+                        "Pincode": pincode, 
+                        "Issue_English": st.session_state.eng_summary, 
+                        "Recipient": recipient
+                    }])
                     try:
                         existing = conn.read()
                         updated = pd.concat([existing, new_entry], ignore_index=True)
@@ -146,11 +165,10 @@ if "letter" in st.session_state:
                     except:
                         conn.create(data=new_entry)
 
-                    st.success("Sent Successfully!")
+                    st.success(f"Email sent successfully to {len(email_list)} recipient(s)!")
                     st.balloons()
                     
-                    # WHATSAPP SHARE BUTTON
-                    share_text = f"I just reported a civic issue in {pincode} using The Reminder India app! Check it out here: https://your-app-link.streamlit.app"
+                    share_text = f"I just reported a civic issue using The Reminder India app! Use it here: https://your-app-link.streamlit.app"
                     whatsapp_url = f"https://wa.me/?text={urllib.parse.quote(share_text)}"
                     st.link_button("📢 Share on WhatsApp", whatsapp_url)
                     
