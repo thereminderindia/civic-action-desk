@@ -64,20 +64,20 @@ with col_title:
     st.title("The Reminder India")
     st.subheader("National Civic Action Desk")
 
-# 4. STEP 1: LANGUAGES & PINCODE
+# 4. STEP 1: 22 LANGUAGES & PINCODE
 st.markdown("---")
 st.subheader("📍 Step 1: Language & Location")
 lang_col, pin_col, details_col = st.columns([2, 2, 4])
 
 with lang_col:
     target_language = st.selectbox("Select Letter Language:", 
-        ["English", "Hindi (हिन्दी)", "Bengali (বাংলা)", "Marathi (มরাঠি)", 
-         "Telugu (తెలుగు)", "Tamil (தமிழ்)", "Gujarati (ગુજરાતી)", 
-         "Urdu (اردو)", "Kannada (ಕನ್ನಡ)", "Odia (ଓଡ଼ିଆ)", 
-         "Malayalam (മലയാളം)", "Punjabi (ਪੰਜਾਬੀ)", "Assamese (অসমীয়া)", 
+        ["English", "Hindi (हिन्दी)", "Bengali (বাংলা)", "Marathi (मराठी)", 
+         "Telugu (తెలుగు)", "Tamil (தமிழ்)", "Gujarati (ગુજરાਤੀ)", 
+         "Urdu (اردו)", "Kannada (କನ್ನಡ)", "Odia (ଓଡ଼ିଆ)", 
+         "Malayalam (മലയാളം)", "Punjabi (ਪੰਜਾਬੀ)", "Assamese (অসমੀয়া)", 
          "Maithili (मैथिली)", "Santali (संताली)", "Kashmiri (کٲशُر)", 
-         "Nepali (नेपाली)", "Konkani (कोंकણી)", "Sindhi (سنڌي)", 
-         "Dogri (डोगरी)", "Manipuri (মৈতৈলোন)", "Bodo (बर')", "Sanskrit (संस्कृतम्)"])
+         "Nepali (नेपाली)", "Konkani (कोंकਣੀ)", "Sindhi (سنڌي)", 
+         "Dogri (डੋਗਰੀ)", "Manipuri (মৈতৈলোন)", "Bodo (बर')", "Sanskrit (संस्कृतम्)"])
 
 with pin_col:
     user_pin = st.text_input("Enter 6-Digit PIN:", value="", max_chars=6)
@@ -97,10 +97,9 @@ with details_col:
         else:
             st.error("❌ PIN not found in database.")
 
-# GPS & File Uploads
 col_gps, col_files = st.columns(2)
 with col_gps:
-    if st.button("🛰️ Capture Exact GPS"):
+    if st.button("🛰️ Capture GPS"):
         loc = streamlit_js_eval(data_key='pos', func_name='getCurrentPosition', want_output=True)
         if loc:
             st.session_state.gps_coord = f"Lat: {loc['coords']['latitude']}, Lon: {loc['coords']['longitude']}"
@@ -109,7 +108,7 @@ with col_gps:
 with col_files:
     uploaded_files = st.file_uploader("Attach Evidence (Photos/Videos):", accept_multiple_files=True)
 
-# 5. STEP 2: REPORTER DETAILS
+# 5. STEP 2: REPORTER DETAILS (Strict 10-Digit Phone)
 st.markdown("---")
 st.subheader("📝 Step 2: Reporter Details")
 user_name = st.text_input("Full Name (Sender):")
@@ -125,28 +124,45 @@ if st.button("🚀 1. Generate Official Letter"):
     is_phone_valid = not user_phone or (user_phone.isdigit() and len(user_phone) == 10)
 
     if not is_pin_valid:
-        st.error("❌ Blocked: Pincode is not 6 digits.")
+        st.error("❌ Pincode must be exactly 6 digits.")
     elif not is_phone_valid:
-        st.error("❌ Blocked: Phone number is not 10 digits.")
+        st.error("❌ Phone number must be exactly 10 digits.")
     elif not user_name or not selected_loc or not issue:
         st.error("⚠️ Missing details (Name, PIN, or Issue).")
     else:
-        with st.spinner(f"Drafting in {target_language}..."):
-            contact_info = f"Contact: {user_phone}" if user_phone.strip() else ""
+        with st.spinner(f"Drafting formal letter..."):
+            contact_info = f"Contact Number: {user_phone}" if user_phone.strip() else ""
             gps_line = f"GPS Coordinates: {st.session_state.get('gps_coord', 'Not captured')}"
             evidence_count = len(uploaded_files) if uploaded_files else 0
 
             system_prompt = f"""
             Draft a formal civic complaint in {target_language}.
             
-            FORMATTING:
-            1. DATE (TOP RIGHT): {current_date}
-            2. FROM: {user_name}, PIN: {selected_loc['PIN']}, {contact_info}
-            3. TO: The Municipal Commissioner, {selected_loc['Town']}, {selected_loc['District']}.
-            4. BODY: 3 paragraphs. Mention GPS: {gps_line} and {evidence_count} evidence files attached.
+            STRICT LAYOUT RULES:
+            1. DATE (TOP RIGHT): Place '{current_date}' at the top right.
+            
+            2. FROM SECTION:
+               From,
+               Name: {user_name}
+               {contact_info}
+            
+            3. TO SECTION:
+               To,
+               The Municipal Commissioner,
+               {selected_loc['Town']}, {selected_loc['District']}.
+               PIN: {selected_loc['PIN']}
+            
+            4. BODY: 
+               - Para 2: Mention GPS: {gps_line}
+               - Para 3: Mention {evidence_count} evidence files attached.
+            
             5. SIGN-OFF: Sincerely, {user_name}. Supported by TRI.
             
-            END WITH: 'SUGGESTED_EMAIL: ' (likely municipal email).
+            CRITICAL: 
+            - If no phone number is provided, DO NOT include the word 'Contact' or any phone line in the 'From' section.
+            - Ensure PIN is ONLY shown in the 'To' section address.
+            
+            END WITH: 'SUGGESTED_EMAIL: '
             """
             response = client.chat.completions.create(
                 model="gpt-4o-mini",
@@ -156,22 +172,19 @@ if st.button("🚀 1. Generate Official Letter"):
             st.session_state.letter = res_content.split("SUGGESTED_EMAIL:")[0].strip()
             st.session_state.sug_email = res_content.split("SUGGESTED_EMAIL:")[1].strip() if "SUGGESTED_EMAIL:" in res_content else ""
 
-# 7. STEP 4: EDITABLE RECIPIENTS & SEND
+# 7. STEP 4: EDITABLE RECIPIENTS & MULTIPLE EMAILS
 if "letter" in st.session_state:
     st.divider()
-    st.subheader("📬 Step 4: Final Review & Email Controls")
-    st.text_area("Letter Content:", value=st.session_state.letter, height=450)
+    st.subheader("📬 Step 4: Review & Send")
+    st.text_area("Letter Content:", value=st.session_state.letter, height=500)
     
-    # Recipient Control Row
     col_to, col_cc, col_bcc = st.columns(3)
     with col_to:
-        rec_to = st.text_input("To (Primary):", value=st.session_state.sug_email, help="You can delete and change this. Use commas for multiple.")
+        rec_to = st.text_input("To (Primary):", value=st.session_state.sug_email, help="Separate multiple emails with commas")
     with col_cc:
-        rec_cc = st.text_input("CC (Public Copy):", placeholder="news@media.com, dm@gov.in")
+        rec_cc = st.text_input("CC (Public):", placeholder="news@media.com, dm@gov.in")
     with col_bcc:
-        rec_bcc = st.text_input("BCC (Secret Copy):", placeholder="archive@tri.com")
-
-    st.info("💡 Tip: To send to multiple people, just separate emails with a comma (e.g. officer1@gov.in, officer2@gov.in)")
+        rec_bcc = st.text_input("BCC (Private):", placeholder="archive@tri.com")
 
     col_btn1, col_btn2 = st.columns(2)
     with col_btn1:
@@ -181,7 +194,7 @@ if "letter" in st.session_state:
     with col_btn2:
         if st.button("📧 Send Official Email Now"):
             if not rec_to:
-                st.error("❌ Please provide at least one recipient email address.")
+                st.error("❌ Need a recipient email.")
             else:
                 with st.spinner("Sending..."):
                     try:
@@ -201,7 +214,7 @@ if "letter" in st.session_state:
                         smtp.login(SENDER_EMAIL, APP_PASSWORD)
                         smtp.send_message(msg)
                         smtp.quit()
-                        st.success("✅ Reported Successfully! Check your sent folder.")
+                        st.success("✅ Reported Successfully!")
                         st.balloons()
                     except Exception as e:
                         st.error(f"Error: {e}")
