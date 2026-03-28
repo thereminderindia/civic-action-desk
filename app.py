@@ -4,6 +4,7 @@ import smtplib
 from email.message import EmailMessage
 from fpdf import FPDF
 import pandas as pd
+import re
 from datetime import datetime
 from streamlit_gsheets import GSheetsConnection
 from streamlit_js_eval import streamlit_js_eval
@@ -19,6 +20,15 @@ try:
     conn = st.connection("gsheets", type=GSheetsConnection)
 except:
     st.sidebar.error("Database connection issue.")
+
+# --- NEW: EMAIL VALIDATION HELPER ---
+def is_valid_email(email_str):
+    if not email_str.strip():
+        return True  # Allow empty for CC/BCC
+    # Support multiple emails separated by commas
+    emails = [e.strip() for e in email_str.split(',')]
+    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    return all(re.match(pattern, e) for e in emails if e)
 
 # 2. LOCAL CSV ENGINE
 @st.cache_data
@@ -74,7 +84,7 @@ with lang_col:
         ["English", "Hindi (हिन्दी)", "Bengali (বাংলা)", "Marathi (मराठी)", 
          "Telugu (తెలుగు)", "Tamil (தமிழ்)", "Gujarati (ગુજરાતી)", 
          "Urdu (اردو)", "Kannada (କನ್ನಡ)", "Odia (ଓଡ଼ିଆ)", 
-         "Malayalam (മലയാളം)", "Punjabi (ਪੰਜਾਬੀ)", "Assamese (অসমୀয়া)", 
+         "Malayalam (മലയാളം)", "Punjabi (ਪੰਜਾਬੀ)", "Assamese (অસમୀয়া)", 
          "Maithili (मैथिली)", "Santali (संताली)", "Kashmiri (کٲशُر)", 
          "Nepali (नेपाली)", "Konkani (कोंकਣੀ)", "Sindhi (سنڌي)", 
          "Dogri (डोगरी)", "Manipuri (মৈতৈলোন)", "Bodo (बर')", "Sanskrit (संस्कृतम्)"])
@@ -144,30 +154,24 @@ if st.button("🚀 1. Generate Official Letter"):
             2. FROM: Name: {user_name}. (Include '{contact_text}' ONLY if it is not 'NOT_PROVIDED').
             3. TO: The Municipal Commissioner, {selected_loc['Town']}, {selected_loc['District']}. PIN: {selected_loc['PIN']}
             4. BODY: 
-               - Para 1: State the issue clearly based on user input.
+               - Para 1: Issue based on input.
                - Para 2: Mention GPS: {gps_val}. (If NOT_CAPTURED, ask for on-ground verification).
-               - Para 3: If evidence files > 0, mention that photographic/video evidence is attached. Otherwise, SKIP.
-            5. CLOSING (MANDATORY): 
-               Sincerely,
-               {user_name}
-               Supported by The Reminder India community.
+               - Para 3: If evidence files > 0, mention attachments.
+            5. CLOSING (MANDATORY): Sincerely, {user_name}. Supported by The Reminder India community.
             
-            RULES:
-            - RAW TEXT ONLY. NO markdown backticks (```) or code boxes.
-            - NO placeholder emails like 'example.com'.
-            - END WITH: 'SUGGESTED_EMAIL: '
+            RULES: RAW TEXT ONLY. NO backticks (```). NO placeholder emails.
+            END WITH: 'SUGGESTED_EMAIL: '
             """
             response = client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": issue}]
             )
             res_content = response.choices[0].message.content.replace("```", "").strip()
-            
             st.session_state.letter = res_content.split("SUGGESTED_EMAIL:")[0].strip()
             raw_email = res_content.split("SUGGESTED_EMAIL:")[1].strip() if "SUGGESTED_EMAIL:" in res_content else ""
             st.session_state.sug_email = raw_email.replace("`", "").strip()
 
-# 7. STEP 4: REVIEW & MULTI-SEND
+# 7. STEP 4: REVIEW & MULTI-SEND WITH EMAIL VALIDATION
 if "letter" in st.session_state:
     st.divider()
     st.subheader("📬 Step 4: Final Review & Email Controls")
@@ -177,7 +181,7 @@ if "letter" in st.session_state:
     with col_to:
         rec_to = st.text_input("To (Primary Official):", value=st.session_state.sug_email)
     with col_cc:
-        rec_cc = st.text_input("CC (Public Copy):", value="")
+        rec_cc = st.text_input("CC (Public Copy):", value="", placeholder="e.g. news@media.com")
     with col_bcc:
         rec_bcc = st.text_input("BCC (Secret Archive):", value="")
 
@@ -185,9 +189,21 @@ if "letter" in st.session_state:
     with col_btn1:
         pdf_bytes = create_pdf(st.session_state.letter)
         st.download_button("📥 Download Print PDF", data=pdf_bytes, file_name=f"TRI_Report_{user_pin}.pdf")
+    
     with col_btn2:
         if st.button("📧 Send Official Email Now"):
-            if rec_to:
+            # STRICT VALIDATION CHECK
+            to_valid = is_valid_email(rec_to) if rec_to else False
+            cc_valid = is_valid_email(rec_cc)
+            bcc_valid = is_valid_email(rec_bcc)
+
+            if not to_valid:
+                st.error("❌ Invalid Primary Email Address. Please use format name@domain.com")
+            elif not cc_valid:
+                st.error("❌ Invalid CC Email Address.")
+            elif not bcc_valid:
+                st.error("❌ Invalid BCC Email Address.")
+            else:
                 with st.spinner("Sending..."):
                     try:
                         msg = EmailMessage()
@@ -208,5 +224,3 @@ if "letter" in st.session_state:
                         st.balloons()
                     except Exception as e:
                         st.error(f"Error: {e}")
-            else:
-                st.error("❌ Please provide a recipient email address.")
