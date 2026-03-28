@@ -10,7 +10,7 @@ from streamlit_gsheets import GSheetsConnection
 from streamlit_js_eval import streamlit_js_eval
 import urllib.parse
 
-# 1. AUTHENTICATION & SETUP
+# 1. SETUP & AUTH
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 SENDER_EMAIL = st.secrets["SENDER_EMAIL"]
 APP_PASSWORD = st.secrets["APP_PASSWORD"]
@@ -21,17 +21,32 @@ try:
 except:
     st.sidebar.error("Database connection issue.")
 
-# 2. HELPER FUNCTIONS
-def get_official_post_office_data(pin):
+# 2. RESILIENT LOCATION ENGINE
+def check_api_status():
+    """Checks if the India Post API is currently reachable."""
     try:
-        response = requests.get(f"https://api.postalpincode.in/pincode/{pin}", timeout=5)
+        response = requests.get("https://api.postalpincode.in/pincode/110001", timeout=2)
+        return True if response.status_code == 200 else False
+    except:
+        return False
+
+def get_pincode_data(pin):
+    if not pin or len(pin) != 6:
+        return "INVALID"
+    try:
+        response = requests.get(f"https://api.postalpincode.in/pincode/{pin}", timeout=3)
         data = response.json()
         if data[0]['Status'] == 'Success' and data[0]['PostOffice']:
             office = data[0]['PostOffice'][0]
-            return {"Area": office['Name'], "District": office['District'], "State": office['State']}
+            return {
+                "Area": office['Name'],
+                "District": office['District'],
+                "State": office['State'],
+                "Method": "Official Records"
+            }
     except:
-        return None
-    return None
+        pass 
+    return "AI_KNOWLEDGE"
 
 def create_pdf(text):
     pdf = FPDF()
@@ -41,21 +56,26 @@ def create_pdf(text):
         pdf.multi_cell(0, 10, txt=line, align='L')
     return pdf.output(dest='S').encode('latin-1', 'ignore')
 
-# 3. INTERFACE & SOCIAL MEDIA SIDEBAR
+# 3. INTERFACE & SIDEBAR
 st.set_page_config(page_title="The Reminder India", page_icon="🏛️", layout="wide")
 
 # --- SIDEBAR START ---
 st.sidebar.title("📲 Connect with TRI")
-st.sidebar.info("Support our mission by following our official channels:")
+st.sidebar.link_button("📺 YouTube", "https://youtube.com/@TheReminderIndia")
+st.sidebar.link_button("🔵 Facebook", "https://facebook.com/TheReminderIndia")
+st.sidebar.link_button("📸 Instagram", "https://instagram.com/TheReminderIndia")
 
-# Social Media Links (Replace '#' with your actual URLs)
-st.sidebar.link_button("📺 YouTube: The Reminder India", "https://youtube.com/@TheReminderIndia")
-st.sidebar.link_button("🔵 Facebook: The Reminder India", "https://facebook.com/TheReminderIndia")
-st.sidebar.link_button("📸 Instagram: @TheReminderIndia", "https://instagram.com/TheReminderIndia")
+st.sidebar.markdown("---")
+st.sidebar.title("📡 System Status")
+api_online = check_api_status()
+if api_online:
+    st.sidebar.success("🟢 India Post API: Online")
+else:
+    st.sidebar.warning("🟡 India Post API: Offline (Using AI Fallback)")
 
 st.sidebar.markdown("---")
 st.sidebar.title("🛠️ Tools")
-st.sidebar.link_button("🔍 Official Pincode Search", "https://www.indiapost.gov.in/VAS/Pages/findpincode.aspx")
+st.sidebar.link_button("🔍 Verify Pincode", "https://www.indiapost.gov.in/VAS/Pages/findpincode.aspx")
 # --- SIDEBAR END ---
 
 # Branding Header
@@ -67,20 +87,15 @@ with col_title:
     st.title("The Reminder India")
     st.subheader("National Civic Action Desk")
 
-# 4. SETTINGS & LOCATION
+# 4. LOCATION & LANGUAGE
 st.markdown("---")
 lang_col, loc_input_col, gps_col = st.columns([2, 2, 1])
 
 with lang_col:
-    target_language = st.selectbox("Select Letter Language:", 
-        ["English", "Hindi (हिन्दी)", "Bengali (বাংলা)", "Marathi (मराठी)", 
-         "Telugu (తెలుగు)", "Tamil (தமிழ்)", "Gujarati (ગુજરાતી)", 
-         "Urdu (اردו)", "Kannada (ಕನ್ನಡ)", "Odia (ଓଡ଼ିଆ)", 
-         "Malayalam (മലയാളം)", "Punjabi (ਪੰਜਾਬੀ)", "Assamese (অসমীয়া)", 
-         "Maithili (मैथिली)", "Santali (संताली)", "Kashmiri (کٲشُر)", 
-         "Nepali (नेपाली)", "Konkani (कोंकणी)", "Sindhi (سنڌي)", 
-         "Dogri (डोगरी)", "Manipuri (মৈতৈলোন)", "Bodo (बर')",
-         "Sanskrit (संस्कृतम्)", "Spanish (Español)", "French (Français)"])
+    target_language = st.selectbox("Select Language:", 
+        ["English", "Hindi (हिन्दी)", "Bengali (বাংলা)", "Marathi (मराठी)", "Telugu (తెలుగు)", 
+         "Tamil (தமிழ்)", "Gujarati (ગુજરાતી)", "Urdu (اردو)", "Kannada (ಕನ್ನಡ)", 
+         "Punjabi (ਪੰਜਾਬੀ)", "Malayalam (മലയാളം)", "Odia (ଓਡ਼ିਆ)"])
 
 with loc_input_col:
     pincode = st.text_input("6-Digit Pincode:", value="", max_chars=6, placeholder="e.g. 247775")
@@ -96,47 +111,47 @@ with gps_col:
 # 5. USER INPUTS
 user_name = st.text_input("Full Name (Sender):")
 user_phone = st.text_input("Contact Number (Optional):")
-uploaded_files = st.file_uploader("Attach Evidence (Photos/Videos):", accept_multiple_files=True)
+uploaded_files = st.file_uploader("Evidence (Photos/Videos):", accept_multiple_files=True)
 issue = st.text_area("Describe the local problem:")
 
-# 6. GENERATION LOGIC
+# 6. SMART GENERATION
 if st.button("🚀 1. Generate Official Letter"):
-    official_data = get_official_post_office_data(pincode) if pincode else None
-    gps_data = st.session_state.get('gps_data')
-
-    if not user_name or not issue:
+    loc_result = get_pincode_data(pincode)
+    
+    if loc_result == "INVALID":
+        st.error("⚠️ Please enter a valid 6-digit Pincode.")
+    elif not user_name or not issue:
         st.error("⚠️ Name and Issue are required.")
-    elif pincode and not official_data:
-        st.error(f"❌ Pincode {pincode} not found. Please verify.")
-    elif not pincode and not gps_data:
-        st.error("⚠️ Please provide a Pincode or use GPS.")
     else:
-        with st.spinner("Drafting..."):
-            if official_data:
-                loc_str = f"Area: {official_data['Area']}, District: {official_data['District']}, State: {official_data['State']}"
-                recipient_body = f"The Municipal Commissioner / Executive Officer, {official_data['Area']} Municipality, {official_data['District']}, {official_data['State']}"
+        with st.spinner("Drafting letter..."):
+            if isinstance(loc_result, dict):
+                loc_context = f"OFFICIAL: {loc_result['Area']}, {loc_result['District']}, {loc_result['State']}"
+                st.sidebar.success("📍 Found in Govt Records")
             else:
-                loc_str = f"GPS Coordinates: {gps_data}"
-                recipient_body = "The Municipal Commissioner of the local jurisdiction"
+                loc_context = f"PINCODE: {pincode}. Identify City/State via AI."
+                st.sidebar.info("📍 Identified via AI")
 
             contact_line = f"Contact: {user_phone}" if user_phone.strip() else ""
 
             system_prompt = f"""
             You are a Senior Civic Advocate. Draft a formal complaint in {target_language}.
             
-            SENDER: {user_name}, Pincode: {pincode if pincode else 'GPS'}
-            {contact_line}
-            LOCATION: {loc_str}
+            CONTEXT:
+            - {loc_context}
+            - Sender: {user_name}
+            - {contact_line}
+            - Date: {current_date}
 
-            STRICT FORMAT:
-            1. Start recipient with 'To,'.
-            2. RECIPIENT: {recipient_body}.
-            3. No guesses. No Nainital. No placeholders.
-            4. SIGN-OFF: Sincerely, {user_name}. Supported by The Reminder India community.
+            STRICT RULES:
+            1. RECIPIENT: Start with 'To,'. Address the local Municipal Commissioner.
+            2. For 247775/247776, the location is Kandhla/Shamli, Uttar Pradesh.
+            3. Sign off: Sincerely, {user_name}. Supported by The Reminder India community.
+            4. If contact info is missing, skip that line.
+            5. Body: 3 paragraphs in {target_language}.
             
             FORMAT:
             [LETTER_START]
-            (Letter content)
+            (Content)
             [LETTER_END]
             [ENGLISH_SUMMARY]: (Summary)
             [SUGGESTED_EMAIL]: (Official email)
@@ -154,7 +169,6 @@ if st.button("🚀 1. Generate Official Letter"):
                 st.session_state.suggested_email = full_res.split("[SUGGESTED_EMAIL]:")[1].strip()
             except:
                 st.session_state.letter = full_res
-                st.session_state.eng_summary = "Processed."
                 st.session_state.suggested_email = ""
 
 # 7. REVIEW & SEND
@@ -162,6 +176,9 @@ if "letter" in st.session_state:
     st.divider()
     st.text_area("Review Official Draft:", value=st.session_state.letter, height=400)
     
+    pdf_bytes = create_pdf(st.session_state.letter)
+    st.download_button("📥 Download PDF", data=pdf_bytes, file_name=f"Complaint_{pincode}.pdf")
+
     recipient = st.text_input("Authority Email(s):", value=st.session_state.suggested_email)
 
     if st.button("📧 2. Send Email Now"):
@@ -174,7 +191,6 @@ if "letter" in st.session_state:
                     msg['Subject'] = f"CIVIC COMPLAINT: {pincode} - {user_name}"
                     msg['From'] = SENDER_EMAIL
                     msg['To'] = ", ".join(email_list)
-                    
                     if uploaded_files:
                         for f in uploaded_files:
                             msg.add_attachment(f.read(), maintype='application', subtype='octet-stream', filename=f.name)
@@ -184,8 +200,8 @@ if "letter" in st.session_state:
                     smtp.send_message(msg)
                     smtp.quit()
                     
-                    # Log to GSheets
-                    new_entry = pd.DataFrame([{"Timestamp": datetime.now(), "Name": user_name, "Pincode": pincode, "Issue_English": st.session_state.eng_summary, "Recipient": recipient}])
+                    # Log to Sheets
+                    new_entry = pd.DataFrame([{"Timestamp": datetime.now(), "Name": user_name, "Pincode": pincode, "Issue_English": st.session_state.get('eng_summary', 'N/A'), "Recipient": recipient}])
                     all_data = pd.concat([conn.read(), new_entry], ignore_index=True)
                     conn.update(data=all_data)
 
