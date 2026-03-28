@@ -28,8 +28,7 @@ def load_pincode_db():
         df.columns = [c.strip().lower() for c in df.columns]
         df['pincode'] = df['pincode'].astype(str)
         return df
-    except Exception as e:
-        st.error(f"Error loading pincodes.csv: {e}")
+    except:
         return None
 
 def create_pdf(text):
@@ -65,23 +64,20 @@ with col_title:
     st.title("The Reminder India")
     st.subheader("National Civic Action Desk")
 
-# 4. STEP 1: LANGUAGE & LOCATION
+# 4. STEP 1: PINCODE & LIVE VALIDATION
 st.markdown("---")
-st.subheader("📍 Step 1: Language & Area Selection")
+st.subheader("📍 Step 1: Location Selection")
 lang_col, pin_col, details_col = st.columns([2, 2, 4])
 
 with lang_col:
-    target_language = st.selectbox("Select Letter Language:", 
-        ["English", "Hindi (हिन्दी)", "Bengali (বাংলা)", "Marathi (मराठी)", 
-         "Telugu (తెలుగు)", "Tamil (தமிழ்)", "Gujarati (ગુજરાતી)", 
-         "Urdu (اردو)", "Kannada (ಕನ್ನಡ)", "Odia (ଓଡ଼ିଆ)", 
-         "Malayalam (മലയാളം)", "Punjabi (ਪੰਜਾਬੀ)", "Assamese (অসমੀয়া)", 
-         "Maithili (मैथिली)", "Santali (संताली)", "Kashmiri (کٲशُر)", 
-         "Nepali (नेपाली)", "Konkani (कोंकણી)", "Sindhi (سنڌي)", 
-         "Dogri (डोगरी)", "Manipuri (মৈতৈলোন)", "Bodo (बर')", "Sanskrit (संस्कृतम्)"])
+    target_language = st.selectbox("Letter Language:", 
+        ["English", "Hindi (हिन्दी)", "Bengali (বাংলা)", "Marathi (मराठी)", "Telugu (తెలుగు)", "Tamil (தமிழ்)", "Punjabi (ਪੰਜਾਬੀ)"])
 
 with pin_col:
-    user_pin = st.text_input("Enter 6-Digit PIN:", value="", max_chars=6, help="Must be exactly 6 digits")
+    user_pin = st.text_input("Enter 6-Digit PIN:", value="", max_chars=6)
+    # LIVE WARNING
+    if user_pin and (not user_pin.isdigit() or len(user_pin) != 6):
+        st.error("⚠️ PIN must be exactly 6 digits.")
 
 selected_loc = None
 with details_col:
@@ -92,14 +88,14 @@ with details_col:
             chosen_office = st.selectbox("Confirm Town/City:", office_list)
             row = matches[matches['officename'] == chosen_office].iloc[0]
             selected_loc = {"Town": row['officename'], "District": row['district'], "State": row['circlename'], "PIN": user_pin}
-            st.success(f"✅ Area Detected: {selected_loc['Town']}, {selected_loc['District']}")
+            st.success(f"✅ Area Detected: {selected_loc['Town']}")
         else:
             st.error("❌ PIN not found in database.")
 
 # GPS & File Uploads
 col_gps, col_files = st.columns(2)
 with col_gps:
-    if st.button("🛰️ Capture Exact GPS"):
+    if st.button("🛰️ Capture GPS"):
         loc = streamlit_js_eval(data_key='pos', func_name='getCurrentPosition', want_output=True)
         if loc:
             st.session_state.gps_coord = f"Lat: {loc['coords']['latitude']}, Lon: {loc['coords']['longitude']}"
@@ -108,26 +104,31 @@ with col_gps:
 with col_files:
     uploaded_files = st.file_uploader("Attach Evidence (Photos/Videos):", accept_multiple_files=True)
 
-# 5. STEP 2: USER & ISSUE DETAILS
+# 5. STEP 2: REPORTER DETAILS & PHONE VALIDATION
 st.markdown("---")
 st.subheader("📝 Step 2: Reporter Details")
 user_name = st.text_input("Full Name (Sender):")
-user_phone = st.text_input("Contact Number (Optional):", max_chars=10, help="Must be 10 digits")
+user_phone = st.text_input("Contact Number (Optional):", max_chars=10)
+# LIVE PHONE WARNING
+if user_phone and (not user_phone.isdigit() or len(user_phone) != 10):
+    st.error("⚠️ Phone number must be exactly 10 digits.")
+
 issue = st.text_area("Describe the local problem:")
 
 # 6. STEP 3: GENERATION
 if st.button("🚀 1. Generate Official Letter"):
-    phone_valid = True if not user_phone or (user_phone.isdigit() and len(user_phone) == 10) else False
-    pin_valid = True if len(user_pin) == 6 else False
+    # STRICT BLOCKING LOGIC
+    is_pin_valid = user_pin.isdigit() and len(user_pin) == 6
+    is_phone_valid = not user_phone or (user_phone.isdigit() and len(user_phone) == 10)
 
-    if not pin_valid:
-        st.error("❌ Pincode must be 6 digits.")
-    elif not phone_valid:
-        st.error("❌ Phone number must be 10 digits.")
+    if not is_pin_valid:
+        st.error("❌ Generation Stopped: Pincode must be exactly 6 digits.")
+    elif not is_phone_valid:
+        st.error("❌ Generation Stopped: Phone number must be exactly 10 digits.")
     elif not user_name or not selected_loc or not issue:
         st.error("⚠️ Missing required details.")
     else:
-        with st.spinner(f"Drafting formal petition in {target_language}..."):
+        with st.spinner(f"Drafting formal petition..."):
             contact_info = f"Contact: {user_phone}" if user_phone.strip() else ""
             gps_line = f"GPS Coordinates: {st.session_state.get('gps_coord', 'Not captured')}"
             evidence_count = len(uploaded_files) if uploaded_files else 0
@@ -135,14 +136,14 @@ if st.button("🚀 1. Generate Official Letter"):
             system_prompt = f"""
             Draft a formal civic complaint in {target_language}.
             
-            STRICT LAYOUT RULES:
-            1. DATE: Place '{current_date}' at the very TOP RIGHT.
+            STRICT LAYOUT:
+            1. TOP RIGHT: '{current_date}'
             
             2. FROM SECTION:
                From,
                {user_name}
                PIN: {selected_loc['PIN']}
-               {contact_info} (Skip this line if contact is not available)
+               {contact_info}
             
             3. TO SECTION:
                To,
@@ -150,13 +151,10 @@ if st.button("🚀 1. Generate Official Letter"):
                {selected_loc['Town']}, {selected_loc['District']}.
                PIN: {selected_loc['PIN']}
             
-            4. BODY: 3 professional paragraphs. 
-               - Mention exact GPS: {gps_line}
-               - Mention {evidence_count} evidence files attached.
+            4. BODY: 3 paragraphs. Mention GPS: {gps_line} and {evidence_count} evidence files attached.
+            5. SIGN-OFF: Sincerely, {user_name}. Supported by TRI.
             
-            5. SIGN-OFF: Sincerely, {user_name}. Supported by The Reminder India community.
-            
-            END WITH: 'SUGGESTED_EMAIL: ' (Likely municipal email).
+            END WITH: 'SUGGESTED_EMAIL: '
             """
             response = client.chat.completions.create(
                 model="gpt-4o-mini",
@@ -190,14 +188,16 @@ if "letter" in st.session_state:
                     msg['From'] = SENDER_EMAIL
                     msg['To'] = rec_to
                     if rec_cc: msg['Cc'] = rec_cc
+                    
                     if uploaded_files:
                         for f in uploaded_files:
                             msg.add_attachment(f.read(), maintype='application', subtype='octet-stream', filename=f.name)
+                    
                     smtp = smtplib.SMTP_SSL('smtp.gmail.com', 465)
                     smtp.login(SENDER_EMAIL, APP_PASSWORD)
                     smtp.send_message(msg)
                     smtp.quit()
-                    st.success("✅ Reported Successfully!")
+                    st.success("✅ Sent Successfully!")
                     st.balloons()
                 except Exception as e:
                     st.error(f"Error: {e}")
