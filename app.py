@@ -64,7 +64,7 @@ with col_title:
     st.title("The Reminder India")
     st.subheader("National Civic Action Desk")
 
-# 4. STEP 1: LANGUAGE & LOCATION
+# 4. STEP 1: 22 LANGUAGES & PINCODE
 st.markdown("---")
 st.subheader("📍 Step 1: Language & Location")
 lang_col, pin_col, details_col = st.columns([2, 2, 4])
@@ -73,7 +73,7 @@ with lang_col:
     target_language = st.selectbox("Select Letter Language:", 
         ["English", "Hindi (हिन्दी)", "Bengali (বাংলা)", "Marathi (मराठी)", 
          "Telugu (తెలుగు)", "Tamil (தமிழ்)", "Gujarati (ગુજરાતી)", 
-         "Urdu (اردو)", "Kannada (କನ್ನಡ)", "Odia (ଓଡ଼ିଆ)", 
+         "Urdu (اردו)", "Kannada (କನ್ನಡ)", "Odia (ଓଡ଼ିଆ)", 
          "Malayalam (മലയാളം)", "Punjabi (ਪੰਜਾਬੀ)", "Assamese (অসমੀয়া)", 
          "Maithili (मैथिली)", "Santali (संताली)", "Kashmiri (کٲशُر)", 
          "Nepali (नेपाली)", "Konkani (कोंकਣੀ)", "Sindhi (سنڌي)", 
@@ -95,7 +95,7 @@ with details_col:
             selected_loc = {"Town": row['officename'], "District": row['district'], "State": row['circlename'], "PIN": user_pin}
             st.success(f"✅ Area: {selected_loc['Town']}, {selected_loc['District']}")
             
-            # --- SIDEBAR TOOL: Official Email Search ---
+            # --- SIDEBAR SEARCH TOOL ---
             st.sidebar.markdown("---")
             st.sidebar.subheader("🔍 Find Official Email")
             search_q = f"official email municipal commissioner {selected_loc['Town']} {selected_loc['District']} site:.gov.in OR site:.nic.in"
@@ -128,42 +128,38 @@ issue = st.text_area("Describe the local problem:")
 
 # 6. STEP 3: GENERATION
 if st.button("🚀 1. Generate Official Letter"):
-    is_pin_valid = user_pin.isdigit() and len(user_pin) == 6
-    is_phone_valid = not user_phone or (user_phone.isdigit() and len(user_phone) == 10)
-
-    if not is_pin_valid or not is_phone_valid or not user_name or not selected_loc or not issue:
-        st.error("⚠️ Please fix the errors in PIN, Phone, or Name before generating.")
+    if not user_name or not selected_loc or not issue or len(user_pin) != 6:
+        st.error("⚠️ Please check PIN (6 digits) and Name/Issue fields.")
     else:
-        with st.spinner(f"Drafting formal petition..."):
-            contact_line = f"Contact: {user_phone}" if user_phone.strip() else "NONE"
-            gps_val = st.session_state.get('gps_coord', "NOT_CAPTURED")
+        with st.spinner(f"Drafting petition..."):
+            contact_text = f"Contact Number: {user_phone}" if user_phone.strip() else "NOT_PROVIDED"
+            gps_val = st.session_state.get('gps_coord', 'NOT_CAPTURED')
             evidence_count = len(uploaded_files) if uploaded_files else 0
 
             system_prompt = f"""
-            Draft a professional civic complaint in {target_language}.
+            Draft a formal civic complaint in {target_language}.
             
-            LAYOUT:
-            1. TOP RIGHT: '{current_date}'
-            2. FROM: Name: {user_name} (Only include Contact line if it is not 'NONE')
-            3. TO: The Municipal Commissioner, {selected_loc['Town']}, {selected_loc['District']}. PIN: {selected_loc['PIN']}
+            RULES:
+            - TOP RIGHT DATE: {current_date}
+            - FROM: Name: {user_name}. (Include '{contact_text}' ONLY if it is not 'NOT_PROVIDED'. If 'NOT_PROVIDED', omit the line completely).
+            - TO: The Municipal Commissioner, {selected_loc['Town']}, {selected_loc['District']}. PIN: {selected_loc['PIN']}
+            - BODY: Mention GPS: {gps_val} (If NOT_CAPTURED, request ground verification).
+            - EVIDENCE: If files > 0, mention attachments. If 0, do NOT mention attachments.
+            - OUTPUT: RAW TEXT ONLY. NO markdown backticks (```).
+            - EMAIL: Provide the most likely official gov email for {selected_loc['Town']}. 
+            - CRITICAL: NEVER use 'example.com'. If no high-probability email exists, leave the field after 'SUGGESTED_EMAIL:' blank.
             
-            CONTENT REQUIREMENTS:
-            - If contact info is '{contact_line}' and not 'NONE', include it. Otherwise, hide the 'Contact:' label entirely.
-            - You MUST mention the GPS Coordinates if available: {gps_val}. If 'NOT_CAPTURED', request on-ground verification.
-            - You MUST mention that photographic/video evidence is attached ONLY if evidence count is {evidence_count} > 0.
-            - If evidence count is 0, do NOT mention files, attachments, or verification of files.
-            
-            SIGN-OFF: Sincerely, {user_name}. Supported by TRI.
-            END WITH: 'SUGGESTED_EMAIL: ' (raw email address only).
+            END WITH: 'SUGGESTED_EMAIL: '
             """
             response = client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": issue}]
             )
-            res_content = response.choices[0].message.content
+            res_content = response.choices[0].message.content.replace("```", "").strip()
+            
             st.session_state.letter = res_content.split("SUGGESTED_EMAIL:")[0].strip()
-            raw_email = res_content.split("SUGGESTED_EMAIL:")[1].strip()
-            st.session_state.sug_email = raw_email.replace("`", "").replace("'", "").strip()
+            raw_email = res_content.split("SUGGESTED_EMAIL:")[1].strip() if "SUGGESTED_EMAIL:" in res_content else ""
+            st.session_state.sug_email = raw_email.replace("`", "").strip()
 
 # 7. STEP 4: REVIEW & MULTI-SEND
 if "letter" in st.session_state:
@@ -173,11 +169,11 @@ if "letter" in st.session_state:
     
     col_to, col_cc, col_bcc = st.columns(3)
     with col_to:
-        rec_to = st.text_input("To (Primary):", value=st.session_state.sug_email)
+        rec_to = st.text_input("To (Primary Official):", value=st.session_state.sug_email)
     with col_cc:
-        rec_cc = st.text_input("CC (Public):", placeholder="news@media.com")
+        rec_cc = st.text_input("CC (Public Copy):", value="", placeholder="e.g. news@media.com")
     with col_bcc:
-        rec_bcc = st.text_input("BCC (TRI Archive):", value="archive@reminderindia.com")
+        rec_bcc = st.text_input("BCC (Secret Archive):", value="", placeholder="e.g. archive@reminderindia.com")
 
     col_btn1, col_btn2 = st.columns(2)
     with col_btn1:
@@ -206,3 +202,5 @@ if "letter" in st.session_state:
                         st.balloons()
                     except Exception as e:
                         st.error(f"Error: {e}")
+            else:
+                st.error("❌ Please provide a recipient email address.")
