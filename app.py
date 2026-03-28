@@ -1,4 +1,4 @@
-import st
+import streamlit as st
 from openai import OpenAI
 import smtplib
 from email.message import EmailMessage
@@ -14,10 +14,11 @@ SENDER_EMAIL = st.secrets["SENDER_EMAIL"]
 APP_PASSWORD = st.secrets["APP_PASSWORD"]
 current_date = datetime.now().strftime("%B %d, %Y")
 
+# Connect to Google Sheets
 try:
     conn = st.connection("gsheets", type=GSheetsConnection)
-except:
-    st.sidebar.error("Check GSheets Secrets.")
+except Exception as e:
+    st.sidebar.error("GSheets Connection Error. Check your Secrets.")
 
 # 2. PDF Function
 def create_pdf(text):
@@ -30,6 +31,8 @@ def create_pdf(text):
 
 # 3. Interface & Branding
 st.set_page_config(page_title="The Reminder India", page_icon="🏛️")
+
+# Replace with your actual YouTube Logo Link
 logo_url = "https://www.facebook.com/photo/?fbid=122097222099239425&set=pb.61587182761969.-2207520000" 
 
 col1, col2 = st.columns([1, 4])
@@ -39,25 +42,32 @@ with col2:
     st.title("The Reminder India")
     st.subheader("National Civic Action Desk")
 
-# 4. LOCATION LOGIC (NEW)
+# Sidebar Stats
+try:
+    existing_data = conn.read(ttl="1m")
+    if not existing_data.empty:
+        st.sidebar.metric("Total Complaints Filed", len(existing_data))
+except:
+    st.sidebar.info("Database initializing...")
+
+# 4. LOCATION SECTION
 st.markdown("### 📍 Location Details")
 loc_col1, loc_col2 = st.columns([2, 1])
 
 with loc_col2:
-    # This button triggers the phone's GPS
+    # Captures GPS from phone/browser
     if st.button("🛰️ Use GPS"):
         location = streamlit_js_eval(data_key='pos', func_name='getCurrentPosition', want_output=True)
         if location:
             lat = location['coords']['latitude']
             lon = location['coords']['longitude']
-            st.session_state.lat_lon = f"{lat}, {lon}"
+            st.session_state.lat_lon = f"Latitude: {lat}, Longitude: {lon}"
             st.success("Location Captured!")
         else:
-            st.warning("Please allow location access in your browser.")
+            st.warning("Please allow location access.")
 
 with loc_col1:
-    # Pincode can be entered manually or remains blank if GPS is used
-    pincode = st.text_input("Enter 6-Digit Pincode:", value=st.session_state.get('pincode', ""), max_chars=6)
+    pincode = st.text_input("6-Digit Pincode:", value=st.session_state.get('pincode', ""), max_chars=6)
 
 # 5. User Inputs
 user_name = st.text_input("Full Name (Sender):")
@@ -67,24 +77,25 @@ issue = st.text_area("Describe the local problem:")
 
 # 6. Smart AI Generation
 if st.button("🚀 1. Generate Official Letter"):
-    # Check if we have EITHER a pincode OR GPS coordinates
-    loc_data = st.session_state.get('lat_lon', pincode)
+    # Use GPS if available, otherwise use Pincode
+    location_to_use = st.session_state.get('lat_lon', pincode)
     
-    if not loc_data or not issue:
+    if not location_to_use or not issue:
         st.error("Please provide a location (Pincode or GPS) and describe the issue.")
     else:
-        with st.spinner("Analyzing location and drafting..."):
+        with st.spinner("AI is analyzing location and drafting..."):
             system_prompt = f"""
             You are a Senior Civic Advocate. Draft a formal complaint based on these rules:
             
-            LOCATION DATA: {loc_data}
-            - If GPS coordinates are provided, identify the City, State, and Pincode.
-            - If Pincode 247775 is used, it is KANDHLA, UTTAR PRADESH.
+            LOCATION DATA: {location_to_use}
+            - If Pincode is 247775, the location is KANDHLA, UTTAR PRADESH.
+            - If GPS coordinates are provided, identify the city and state.
             
             SENDER SECTION:
             - Name: {user_name}
+            - Pincode: {pincode if pincode else 'Detected via GPS'}
             - Contact: {user_phone if user_phone else 'Not provided'}
-            - NO street address. NO sender email.
+            - NO street address. NO sender email in the text body.
             
             CONTENT:
             - DATE: {current_date}
@@ -135,15 +146,16 @@ if "letter" in st.session_state:
                     smtp.send_message(msg)
                     smtp.quit()
 
-                    # Database Log
-                    new_entry = pd.DataFrame([{"Timestamp": datetime.now(), "Name": user_name, "Pincode": pincode, "Issue": issue[:100], "Recipient": recipient}])
-                    # Get existing data and update (logic simplified for clarity)
-                    try:
-                        existing = conn.read()
-                        updated = pd.concat([existing, new_entry], ignore_index=True)
-                        conn.update(data=updated)
-                    except:
-                        conn.create(data=new_entry)
+                    # Database Logging
+                    new_entry = pd.DataFrame([{
+                        "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        "Name": user_name,
+                        "Pincode": pincode,
+                        "Issue": issue[:100],
+                        "Recipient": recipient
+                    }])
+                    all_data = pd.concat([existing_data, new_entry], ignore_index=True)
+                    conn.update(data=all_data)
 
                     st.success("Sent & Recorded Successfully!")
                     st.balloons()
