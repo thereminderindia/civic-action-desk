@@ -2,3 +2,4 @@ openai
 fpdf
 pandas
 st-gsheets-connection
+streamlit-js-eval
