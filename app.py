@@ -56,8 +56,7 @@ st.sidebar.link_button("🔍 Pincode Verify", "https://www.indiapost.gov.in/VAS/
 pincode_df = load_pincode_db()
 
 # Branding
-# Note: Using a direct image URL is recommended for st.image
-logo_url = "https://www.facebook.com/photo/?fbid=122097222099239425&set=pb.61587182761969.-2207520000" 
+logo_url = "https://via.placeholder.com/150x150?text=TRI+LOGO" 
 col_logo, col_title = st.columns([1, 5])
 with col_logo:
     st.image(logo_url, width=90)
@@ -65,7 +64,7 @@ with col_title:
     st.title("The Reminder India")
     st.subheader("National Civic Action Desk")
 
-# 4. STEP 1: 22 LANGUAGES & STRICT PINCODE
+# 4. STEP 1: LANGUAGE & LOCATION
 st.markdown("---")
 st.subheader("📍 Step 1: Language & Location")
 lang_col, pin_col, details_col = st.columns([2, 2, 4])
@@ -82,7 +81,6 @@ with lang_col:
 
 with pin_col:
     user_pin = st.text_input("Enter 6-Digit PIN:", value="", max_chars=6)
-    # LIVE VALIDATION
     if user_pin and (not user_pin.isdigit() or len(user_pin) != 6):
         st.error("⚠️ Pincode must be exactly 6 digits.")
 
@@ -96,16 +94,15 @@ with details_col:
             row = matches[matches['officename'] == chosen_office].iloc[0]
             selected_loc = {"Town": row['officename'], "District": row['district'], "State": row['circlename'], "PIN": user_pin}
             st.success(f"✅ Area: {selected_loc['Town']}, {selected_loc['District']}")
+            
+            # --- SIDEBAR TOOL: Official Email Search ---
+            st.sidebar.markdown("---")
+            st.sidebar.subheader("🔍 Find Official Email")
+            search_q = f"official email municipal commissioner {selected_loc['Town']} {selected_loc['District']} site:.gov.in OR site:.nic.in"
+            g_url = f"https://www.google.com/search?q={urllib.parse.quote(search_q)}"
+            st.sidebar.link_button(f"🌐 Search for {selected_loc['Town']} Email", g_url)
         else:
             st.error("❌ PIN not found in database.")
-
-# DYNAMIC SIDEBAR TOOL: Official Email Search (Based on Selection)
-if selected_loc:
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("🔍 Find Official Email")
-    search_query = f"official email of municipal commissioner {selected_loc['Town']} {selected_loc['District']} site:.gov.in OR site:.nic.in"
-    google_url = f"https://www.google.com/search?q={urllib.parse.quote(search_query)}"
-    st.sidebar.link_button(f"🌐 Search for {selected_loc['Town']} Email", google_url)
 
 # GPS & File Uploads
 col_gps, col_files = st.columns(2)
@@ -119,12 +116,11 @@ with col_gps:
 with col_files:
     uploaded_files = st.file_uploader("Attach Evidence (Photos/Videos):", accept_multiple_files=True)
 
-# 5. STEP 2: REPORTER DETAILS & STRICT PHONE
+# 5. STEP 2: REPORTER DETAILS
 st.markdown("---")
 st.subheader("📝 Step 2: Reporter Details")
 user_name = st.text_input("Full Name (Sender):")
 user_phone = st.text_input("Contact Number (Optional):", max_chars=10)
-# LIVE PHONE WARNING
 if user_phone and (not user_phone.isdigit() or len(user_phone) != 10):
     st.error("⚠️ Phone number must be exactly 10 digits.")
 
@@ -135,12 +131,8 @@ if st.button("🚀 1. Generate Official Letter"):
     is_pin_valid = user_pin.isdigit() and len(user_pin) == 6
     is_phone_valid = not user_phone or (user_phone.isdigit() and len(user_phone) == 10)
 
-    if not is_pin_valid:
-        st.error("❌ Pincode must be 6 digits.")
-    elif not is_phone_valid:
-        st.error("❌ Phone number must be 10 digits.")
-    elif not user_name or not selected_loc or not issue:
-        st.error("⚠️ Missing required details.")
+    if not is_pin_valid or not is_phone_valid or not user_name or not selected_loc or not issue:
+        st.error("⚠️ Please check PIN (6 digits), Phone (10 digits), and all other fields.")
     else:
         with st.spinner(f"Drafting formal petition..."):
             contact_text = f"Contact Number: {user_phone}" if user_phone.strip() else ""
@@ -152,26 +144,18 @@ if st.button("🚀 1. Generate Official Letter"):
             
             STRICT LAYOUT:
             1. DATE (TOP RIGHT): '{current_date}'
+            2. FROM SECTION: From, Name: {user_name}, {contact_text}
+            3. TO SECTION: To, The Municipal Commissioner, {selected_loc['Town']}, {selected_loc['District']}. PIN: {selected_loc['PIN']}
             
-            2. FROM SECTION:
-               From,
-               Name: {user_name}
-               {contact_text}
+            STRICT CONTENT RULES:
+            - If contact number is provided ({user_phone}), you MUST include "{contact_text}" in the 'From' section.
+            - If no phone number is provided, do NOT include the word 'Contact' or any phone line.
+            - Mention GPS: {gps_val}.
+            - EVIDENCE RULE: If files attached ({evidence_count}) is greater than 0, mention that photographic/video evidence is attached.
+            - NO EVIDENCE RULE: If files attached is 0, DO NOT mention attachments, "0 evidence files", or the verification process at all.
+            - PIN belongs ONLY in the 'To' section address.
             
-            3. TO SECTION:
-               To,
-               The Municipal Commissioner,
-               {selected_loc['Town']}, {selected_loc['District']}.
-               PIN: {selected_loc['PIN']}
-            
-            4. BODY: Paragraph 2: Mention GPS: {gps_val}. Paragraph 3: Mention {evidence_count} evidence files attached.
-            5. SIGN-OFF: Sincerely, {user_name}. Supported by The Reminder India community.
-            
-            STRICT RULES:
-            - If contact number is provided ({user_phone}), you MUST include the line "{contact_text}" in the 'From' section. 
-            - If no phone is provided, do NOT include any contact line.
-            - Ensure PIN is ONLY shown in the 'To' section address.
-            - Provide ONLY raw email after 'SUGGESTED_EMAIL:'. No backticks or code blocks.
+            END WITH: 'SUGGESTED_EMAIL: ' (followed by raw email).
             """
             response = client.chat.completions.create(
                 model="gpt-4o-mini",
@@ -179,8 +163,6 @@ if st.button("🚀 1. Generate Official Letter"):
             )
             res_content = response.choices[0].message.content
             st.session_state.letter = res_content.split("SUGGESTED_EMAIL:")[0].strip()
-            
-            # EMAIL EXTRACTION & CLEANING
             raw_email = res_content.split("SUGGESTED_EMAIL:")[1].strip()
             st.session_state.sug_email = raw_email.replace("`", "").replace("'", "").strip()
 
@@ -194,7 +176,7 @@ if "letter" in st.session_state:
     with col_to:
         rec_to = st.text_input("To (Primary):", value=st.session_state.sug_email, help="Edit or add multiple emails with commas.")
     with col_cc:
-        rec_cc = st.text_input("CC (Public):", placeholder="news@media.com, dm@gov.in")
+        rec_cc = st.text_input("CC (Public):", placeholder="dm@nic.in, news@media.com")
     with col_bcc:
         rec_bcc = st.text_input("BCC (Secret Archive):", value="archive@reminderindia.com")
 
@@ -202,12 +184,9 @@ if "letter" in st.session_state:
     with col_btn1:
         pdf_bytes = create_pdf(st.session_state.letter)
         st.download_button("📥 Download Print PDF", data=pdf_bytes, file_name=f"TRI_Report_{user_pin}.pdf")
-    
     with col_btn2:
         if st.button("📧 Send Official Email Now"):
-            if not rec_to:
-                st.error("❌ Recipient email required.")
-            else:
+            if rec_to:
                 with st.spinner("Sending..."):
                     try:
                         msg = EmailMessage()
@@ -217,11 +196,9 @@ if "letter" in st.session_state:
                         msg['To'] = rec_to
                         if rec_cc: msg['Cc'] = rec_cc
                         if rec_bcc: msg['Bcc'] = rec_bcc
-                        
                         if uploaded_files:
                             for f in uploaded_files:
                                 msg.add_attachment(f.read(), maintype='application', subtype='octet-stream', filename=f.name)
-                        
                         smtp = smtplib.SMTP_SSL('smtp.gmail.com', 465)
                         smtp.login(SENDER_EMAIL, APP_PASSWORD)
                         smtp.send_message(msg)
