@@ -42,16 +42,16 @@ def create_pdf(text):
             pdf.multi_cell(0, 10, txt=line, align='L')
     return pdf.output(dest='S').encode('latin-1', 'ignore')
 
-# 3. INTERFACE & SIDEBAR
+# 3. INTERFACE & SIDEBAR (ALL LINKS RESTORED)
 st.set_page_config(page_title="The Reminder India", page_icon="🏛️", layout="wide")
 
 st.sidebar.title("📲 Connect with TRI")
-st.sidebar.link_button("📺 YouTube", "https://youtube.com/@TheReminderIndia")
-st.sidebar.link_button("🔵 Facebook", "https://facebook.com/TheReminderIndia")
-st.sidebar.link_button("📸 Instagram", "https://instagram.com/TheReminderIndia")
+st.sidebar.link_button("📺 YouTube", "[https://youtube.com/@TheReminderIndia]")
+st.sidebar.link_button("🔵 Facebook", "[https://facebook.com/TheReminderIndia]")
+st.sidebar.link_button("📸 Instagram", "[https://instagram.com/TheReminderIndia]")
 st.sidebar.markdown("---")
 st.sidebar.title("🛠️ Tools")
-st.sidebar.link_button("🔍 Pincode Verify", "https://www.indiapost.gov.in/VAS/Pages/findpincode.aspx")
+st.sidebar.link_button("🔍 Pincode Verify", "[https://www.indiapost.gov.in/VAS/Pages/findpincode.aspx]")
 
 pincode_df = load_pincode_db()
 
@@ -64,7 +64,7 @@ with col_title:
     st.title("The Reminder India")
     st.subheader("National Civic Action Desk")
 
-# 4. STEP 1: LANGUAGES & PINCODE
+# 4. STEP 1: 22 LANGUAGES & STRICT PINCODE
 st.markdown("---")
 st.subheader("📍 Step 1: Language & Location")
 lang_col, pin_col, details_col = st.columns([2, 2, 4])
@@ -72,15 +72,16 @@ lang_col, pin_col, details_col = st.columns([2, 2, 4])
 with lang_col:
     target_language = st.selectbox("Select Letter Language:", 
         ["English", "Hindi (हिन्दी)", "Bengali (বাংলা)", "Marathi (मराठी)", 
-         "Telugu (తెలుగు)", "Tamil (தமிழ்)", "Gujarati (ગુજરાਤੀ)", 
+         "Telugu (తెలుగు)", "Tamil (தமிழ்)", "Gujarati (ગુજરાતી)", 
          "Urdu (اردو)", "Kannada (କನ್ನಡ)", "Odia (ଓଡ଼ିଆ)", 
          "Malayalam (മലയാളം)", "Punjabi (ਪੰਜਾਬੀ)", "Assamese (অসমੀয়া)", 
          "Maithili (मैथिली)", "Santali (संताली)", "Kashmiri (کٲशُر)", 
-         "Nepali (नेपाली)", "Konkani (कोंকਣੀ)", "Sindhi (سنڌي)", 
-         "Dogri (डੋਗਰੀ)", "Manipuri (মৈতৈলোন)", "Bodo (बर')", "Sanskrit (संस्कृतम्)"])
+         "Nepali (नेपाली)", "Konkani (कोंकਣੀ)", "Sindhi (سنڌي)", 
+         "Dogri (ਡੋਗਰੀ)", "Manipuri (মৈতৈলোন)", "Bodo (बर')", "Sanskrit (संस्कृतम्)"])
 
 with pin_col:
     user_pin = st.text_input("Enter 6-Digit PIN:", value="", max_chars=6)
+    # LIVE VALIDATION
     if user_pin and (not user_pin.isdigit() or len(user_pin) != 6):
         st.error("⚠️ Pincode must be exactly 6 digits.")
 
@@ -92,7 +93,8 @@ with details_col:
             office_list = matches['officename'].unique().tolist()
             chosen_office = st.selectbox("Confirm Town/City:", office_list)
             row = matches[matches['officename'] == chosen_office].iloc[0]
-            selected_loc = {"Town": row['officename'], "District": row['district'], "State": row['statename'], "PIN": user_pin}
+            # MAPPING AS REQUESTED: officename=Town, district=District, circlename=State
+            selected_loc = {"Town": row['officename'], "District": row['district'], "State": row['circlename'], "PIN": user_pin}
             st.success(f"✅ Area: {selected_loc['Town']}, {selected_loc['District']}")
         else:
             st.error("❌ PIN not found in database.")
@@ -109,30 +111,30 @@ with col_gps:
 with col_files:
     uploaded_files = st.file_uploader("Attach Evidence (Photos/Videos):", accept_multiple_files=True)
 
-# 5. STEP 2: REPORTER DETAILS
+# 5. STEP 2: REPORTER DETAILS & STRICT PHONE
 st.markdown("---")
 st.subheader("📝 Step 2: Reporter Details")
 user_name = st.text_input("Full Name (Sender):")
 user_phone = st.text_input("Contact Number (Optional):", max_chars=10)
+# LIVE PHONE WARNING
 if user_phone and (not user_phone.isdigit() or len(user_phone) != 10):
     st.error("⚠️ Phone number must be exactly 10 digits.")
 
 issue = st.text_area("Describe the local problem:")
 
-# 6. STEP 3: GENERATION
+# 6. STEP 3: GENERATION (FORCE CONTACT VISIBILITY)
 if st.button("🚀 1. Generate Official Letter"):
     is_pin_valid = user_pin.isdigit() and len(user_pin) == 6
     is_phone_valid = not user_phone or (user_phone.isdigit() and len(user_phone) == 10)
 
     if not is_pin_valid:
-        st.error("❌ Pincode must be exactly 6 digits.")
+        st.error("❌ Pincode must be 6 digits.")
     elif not is_phone_valid:
-        st.error("❌ Phone number must be exactly 10 digits.")
+        st.error("❌ Phone number must be 10 digits.")
     elif not user_name or not selected_loc or not issue:
-        st.error("⚠️ Missing details (Name, PIN, or Issue).")
+        st.error("⚠️ Missing required details.")
     else:
-        with st.spinner(f"Drafting formal letter..."):
-            # Mandatory insertion to prevent AI from hiding it
+        with st.spinner(f"Drafting formal petition..."):
             contact_text = f"Contact Number: {user_phone}" if user_phone.strip() else ""
             gps_val = st.session_state.get('gps_coord', 'On-ground verification requested')
             evidence_count = len(uploaded_files) if uploaded_files else 0
@@ -143,29 +145,26 @@ if st.button("🚀 1. Generate Official Letter"):
             STRICT LAYOUT:
             1. DATE (TOP RIGHT): '{current_date}'
             
-            2. FROM SECTION:
+            2. FROM SECTION (Left Aligned):
                From,
                Name: {user_name}
                {contact_text}
             
-            3. TO SECTION:
+            3. TO SECTION (Left Aligned):
                To,
                The Municipal Commissioner,
                {selected_loc['Town']}, {selected_loc['District']}.
                PIN: {selected_loc['PIN']}
             
-            4. BODY: 
-               - State the issue based on: {issue}
-               - Mention GPS: {gps_val}
-               - Mention {evidence_count} evidence files are attached.
-            
+            4. BODY: Paragraph 2: Mention GPS: {gps_val}. Paragraph 3: Mention {evidence_count} evidence files attached.
             5. SIGN-OFF: Sincerely, {user_name}. Supported by The Reminder India community.
             
-            CRITICAL RULES:
+            STRICT RULES:
             - If contact number is provided ({user_phone}), you MUST include the line "{contact_text}" in the 'From' section.
-            - Ensure PIN: {selected_loc['PIN']} is clearly visible in the 'To' section address.
+            - Ensure PIN is ONLY shown in the 'To' section address.
+            - RAW OUTPUT ONLY for email. Do NOT use backticks or markdown formatting for the email address.
             
-            END WITH: 'SUGGESTED_EMAIL: '
+            END WITH: 'SUGGESTED_EMAIL: ' (followed by raw email).
             """
             response = client.chat.completions.create(
                 model="gpt-4o-mini",
@@ -173,9 +172,12 @@ if st.button("🚀 1. Generate Official Letter"):
             )
             res_content = response.choices[0].message.content
             st.session_state.letter = res_content.split("SUGGESTED_EMAIL:")[0].strip()
-            st.session_state.sug_email = res_content.split("SUGGESTED_EMAIL:")[1].strip() if "SUGGESTED_EMAIL:" in res_content else ""
+            
+            # EMAIL EXTRACTION & CLEANING (FIXES THE ``` ISSUE)
+            raw_email = res_content.split("SUGGESTED_EMAIL:")[1].strip()
+            st.session_state.sug_email = raw_email.replace("`", "").replace("'", "").strip()
 
-# 7. STEP 4: REVIEW & MULTI-SEND
+# 7. STEP 4: REVIEW & MULTI-SEND (INTERACTIVE EMAIL BOXES)
 if "letter" in st.session_state:
     st.divider()
     st.subheader("📬 Step 4: Final Review & Email Controls")
@@ -183,11 +185,11 @@ if "letter" in st.session_state:
     
     col_to, col_cc, col_bcc = st.columns(3)
     with col_to:
-        rec_to = st.text_input("To (Primary):", value=st.session_state.sug_email)
+        rec_to = st.text_input("To (Primary):", value=st.session_state.sug_email, help="Delete or change as needed. Use commas for multiple.")
     with col_cc:
         rec_cc = st.text_input("CC (Public):", placeholder="news@media.com, dm@gov.in")
     with col_bcc:
-        rec_bcc = st.text_input("BCC (Private):", placeholder="archive@tri.com")
+        rec_bcc = st.text_input("BCC (Secret Archive):", placeholder="archive@tri.com")
 
     col_btn1, col_btn2 = st.columns(2)
     with col_btn1:
@@ -197,7 +199,7 @@ if "letter" in st.session_state:
     with col_btn2:
         if st.button("📧 Send Official Email Now"):
             if not rec_to:
-                st.error("❌ Need a recipient email.")
+                st.error("❌ Recipient email required.")
             else:
                 with st.spinner("Sending..."):
                     try:
