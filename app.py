@@ -14,7 +14,6 @@ APP_PASSWORD = st.secrets["APP_PASSWORD"]
 current_date = datetime.now().strftime("%B %d, %Y")
 
 # Connect to Google Sheets
-# Note: The URL must be in your Streamlit Secrets, not hardcoded here
 try:
     conn = st.connection("gsheets", type=GSheetsConnection)
 except Exception as e:
@@ -32,8 +31,8 @@ def create_pdf(text):
 # 3. Interface & Branding
 st.set_page_config(page_title="The Reminder India", page_icon="🏛️")
 
-# Using a more reliable placeholder logo; replace with your direct image URL
-logo_url = "https://via.placeholder.com/150x150?text=TRI+LOGO" 
+# PASTE YOUR LOGO URL BETWEEN THE QUOTES BELOW
+logo_url = "https://www.facebook.com/photo/?fbid=122097222099239425&set=pb.61587182761969.-2207520000" 
 
 col1, col2 = st.columns([1, 4])
 with col1:
@@ -43,36 +42,47 @@ with col2:
     st.subheader("National Civic Action Desk")
 
 # Sidebar Stats
-existing_data = pd.DataFrame() # Initialize empty
 try:
     existing_data = conn.read(ttl="1m")
-    st.sidebar.metric("Total Complaints Filed", len(existing_data))
+    if not existing_data.empty:
+        st.sidebar.metric("Total Complaints Filed", len(existing_data))
 except:
-    st.sidebar.info("Database connecting...")
+    st.sidebar.info("Database initializing...")
 
 # 4. User Inputs
-user_name = st.text_input("Full Name:", placeholder="Enter your name")
-pincode = st.text_input("6-Digit Pincode:", max_chars=6, placeholder="e.g. 110091")
+user_name = st.text_input("Full Name (Sender):", placeholder="Enter your name")
+pincode = st.text_input("6-Digit Pincode:", max_chars=6, placeholder="e.g. 247775")
+user_phone = st.text_input("Contact Number (Optional):", placeholder="Enter your phone or leave blank")
 uploaded_files = st.file_uploader("Attach Evidence:", type=["jpg", "png", "jpeg", "mp4", "mov"], accept_multiple_files=True)
 issue = st.text_area("Describe the local problem:")
 
-# 5. Smart AI Generation
+# 5. Smart AI Generation with Your Specific Rules
 if st.button("🚀 1. Generate Official Letter"):
     if not (pincode and len(pincode) == 6) or not issue:
-        st.error("Please enter a valid Pincode and Issue.")
+        st.error("Please enter a valid 6-digit Pincode and Issue.")
     else:
-        with st.spinner("Drafting letter and identifying authority..."):
+        with st.spinner("Drafting letter..."):
             system_prompt = f"""
-            You are a Senior Civic Advocate. 
-            DATE: {current_date}
-            SENDER_EMAIL: {SENDER_EMAIL}
+            You are a Senior Civic Advocate. Draft a formal complaint based on these EXACT rules:
+
+            SENDER SECTION:
+            - Name: {user_name}
+            - Pincode: {pincode}
+            - City/State: Identify the City and State automatically based on Pincode {pincode}.
+            - Contact: If '{user_phone}' is provided, include it. If empty, REMOVE this line.
+            - NO street address. NO sender email address in the text.
+
+            RECIPIENT SECTION:
+            - Address to 'Municipal Authorities'.
+            - Include Pincode {pincode} for the Municipality.
+
+            CONTENT:
+            - DATE: {current_date}
+            - Subject: Professional and urgent.
+            - Sign off: 'Sincerely, {user_name}'. 
+            - Mention: 'Supported by The Reminder India community.'
             
-            TASKS:
-            1. Write a formal complaint for Pincode {pincode}.
-            2. Use the DATE provided above.
-            3. Sign off with '{user_name}' and the SENDER_EMAIL provided.
-            4. At the VERY END of your response, on a new line, write 'SUGGESTED_EMAIL: ' followed by the 
-               official municipal email address for this pincode.
+            END with 'SUGGESTED_EMAIL: ' followed by the likely municipal email.
             """
             
             response = client.chat.completions.create(
@@ -82,7 +92,6 @@ if st.button("🚀 1. Generate Official Letter"):
             )
             
             full_res = response.choices[0].message.content
-            
             if "SUGGESTED_EMAIL:" in full_res:
                 st.session_state.letter = full_res.split("SUGGESTED_EMAIL:")[0].strip()
                 st.session_state.suggested_email = full_res.split("SUGGESTED_EMAIL:")[1].strip()
@@ -93,36 +102,33 @@ if st.button("🚀 1. Generate Official Letter"):
 # 6. Review & Send
 if "letter" in st.session_state:
     st.divider()
-    st.text_area("Final Letter:", value=st.session_state.letter, height=350)
+    st.text_area("Final Letter Draft:", value=st.session_state.letter, height=400)
     
     pdf_bytes = create_pdf(st.session_state.letter)
     st.download_button("📥 Download PDF", data=pdf_bytes, file_name=f"Complaint_{pincode}.pdf")
 
-    st.markdown("### Step 2: Send to Authority")
-    recipient = st.text_input("Authority Email Address:", value=st.session_state.suggested_email)
-    
+    recipient = st.text_input("Authority Email:", value=st.session_state.suggested_email)
+
     if st.button("📧 2. Send Email Now"):
-        if not recipient:
-            st.error("Please enter a recipient email.")
-        else:
-            with st.spinner("Sending..."):
+        if recipient:
+            with st.spinner("Sending and Logging..."):
                 try:
+                    # Email Logic
                     msg = EmailMessage()
                     msg.set_content(st.session_state.letter)
-                    msg['Subject'] = f"URGENT: Civic Complaint - Pincode {pincode}"
+                    msg['Subject'] = f"CIVIC COMPLAINT: Pincode {pincode} - {user_name}"
                     msg['From'] = SENDER_EMAIL
                     msg['To'] = recipient
-                    
                     if uploaded_files:
                         for f in uploaded_files:
                             msg.add_attachment(f.read(), maintype='application', subtype='octet-stream', filename=f.name)
-
+                    
                     smtp = smtplib.SMTP_SSL('smtp.gmail.com', 465)
                     smtp.login(SENDER_EMAIL, APP_PASSWORD)
                     smtp.send_message(msg)
                     smtp.quit()
-                    
-                    # Log to Google Sheets
+
+                    # Database Logging
                     new_entry = pd.DataFrame([{
                         "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                         "Name": user_name,
@@ -131,10 +137,11 @@ if "letter" in st.session_state:
                         "Recipient": recipient
                     }])
                     
-                    updated_df = pd.concat([existing_data, new_entry], ignore_index=True)
-                    conn.update(data=updated_df)
+                    # Update Google Sheet
+                    all_data = pd.concat([existing_data, new_entry], ignore_index=True)
+                    conn.update(data=all_data)
 
-                    st.success("Sent Successfully!")
+                    st.success("Sent & Recorded Successfully!")
                     st.balloons()
                 except Exception as e:
                     st.error(f"Error: {e}")
