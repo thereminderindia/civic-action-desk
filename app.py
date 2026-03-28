@@ -31,7 +31,7 @@ def create_pdf(text):
 # 3. Interface & Branding
 st.set_page_config(page_title="The Reminder India", page_icon="🏛️")
 
-# PASTE YOUR LOGO URL BETWEEN THE QUOTES BELOW
+# PASTE YOUR LOGO URL HERE
 logo_url = "https://www.facebook.com/photo/?fbid=122097222099239425&set=pb.61587182761969.-2207520000" 
 
 col1, col2 = st.columns([1, 4])
@@ -56,21 +56,23 @@ user_phone = st.text_input("Contact Number (Optional):", placeholder="Enter your
 uploaded_files = st.file_uploader("Attach Evidence:", type=["jpg", "png", "jpeg", "mp4", "mov"], accept_multiple_files=True)
 issue = st.text_area("Describe the local problem:")
 
-# 5. Smart AI Generation with Your Specific Rules
+# 5. Smart AI Generation with Location Correction
 if st.button("🚀 1. Generate Official Letter"):
     if not (pincode and len(pincode) == 6) or not issue:
         st.error("Please enter a valid 6-digit Pincode and Issue.")
     else:
         with st.spinner("Drafting letter..."):
+            # Added explicit correction for Kandhla/UP in the prompt
             system_prompt = f"""
             You are a Senior Civic Advocate. Draft a formal complaint based on these EXACT rules:
 
             SENDER SECTION:
             - Name: {user_name}
             - Pincode: {pincode}
-            - City/State: Identify the City and State automatically based on Pincode {pincode}.
+            - City/State: Identify City and State based on {pincode}. 
+              NOTE: If pincode is 247775, the location MUST be 'Kandhla, Uttar Pradesh'.
             - Contact: If '{user_phone}' is provided, include it. If empty, REMOVE this line.
-            - NO street address. NO sender email address in the text.
+            - NO street address. NO sender email address in the letter text.
 
             RECIPIENT SECTION:
             - Address to 'Municipal Authorities'.
@@ -82,7 +84,7 @@ if st.button("🚀 1. Generate Official Letter"):
             - Sign off: 'Sincerely, {user_name}'. 
             - Mention: 'Supported by The Reminder India community.'
             
-            END with 'SUGGESTED_EMAIL: ' followed by the likely municipal email.
+            END with 'SUGGESTED_EMAIL: ' followed by the official municipal email.
             """
             
             response = client.chat.completions.create(
@@ -113,7 +115,6 @@ if "letter" in st.session_state:
         if recipient:
             with st.spinner("Sending and Logging..."):
                 try:
-                    # Email Logic
                     msg = EmailMessage()
                     msg.set_content(st.session_state.letter)
                     msg['Subject'] = f"CIVIC COMPLAINT: Pincode {pincode} - {user_name}"
@@ -136,8 +137,6 @@ if "letter" in st.session_state:
                         "Issue": issue[:100],
                         "Recipient": recipient
                     }])
-                    
-                    # Update Google Sheet
                     all_data = pd.concat([existing_data, new_entry], ignore_index=True)
                     conn.update(data=all_data)
 
