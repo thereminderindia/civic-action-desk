@@ -35,7 +35,7 @@ def load_pincode_db():
 def create_pdf(text):
     pdf = FPDF()
     pdf.add_page()
-    pdf.set_font("Arial", size=12)
+    pdf.set_font("Arial", size=11)
     for line in text.split('\n'):
         if current_date in line:
             pdf.cell(0, 10, txt=line, ln=True, align='R')
@@ -65,7 +65,7 @@ with col_title:
     st.title("The Reminder India")
     st.subheader("National Civic Action Desk")
 
-# 4. STEP 1: LANGUAGE & LOCATION (22 LANGUAGES RESTORED)
+# 4. STEP 1: LANGUAGE & LOCATION
 st.markdown("---")
 st.subheader("📍 Step 1: Language & Area Selection")
 lang_col, pin_col, details_col = st.columns([2, 2, 4])
@@ -75,9 +75,9 @@ with lang_col:
         ["English", "Hindi (हिन्दी)", "Bengali (বাংলা)", "Marathi (मराठी)", 
          "Telugu (తెలుగు)", "Tamil (தமிழ்)", "Gujarati (ગુજરાતી)", 
          "Urdu (اردو)", "Kannada (ಕನ್ನಡ)", "Odia (ଓଡ଼ିଆ)", 
-         "Malayalam (മലയാളം)", "Punjabi (ਪੰਜਾਬੀ)", "Assamese (অসমীয়া)", 
+         "Malayalam (മലയാളം)", "Punjabi (ਪੰਜਾਬੀ)", "Assamese (অসমੀয়া)", 
          "Maithili (मैथिली)", "Santali (संताली)", "Kashmiri (کٲशُر)", 
-         "Nepali (नेपाली)", "Konkani (कोंকਣੀ)", "Sindhi (سنڌي)", 
+         "Nepali (नेपाली)", "Konkani (कोंकણી)", "Sindhi (سنڌي)", 
          "Dogri (डोगरी)", "Manipuri (মৈতৈলোন)", "Bodo (बर')", "Sanskrit (संस्कृतम्)"])
 
 with pin_col:
@@ -92,11 +92,9 @@ with details_col:
             chosen_office = st.selectbox("Confirm Town/City:", office_list)
             row = matches[matches['officename'] == chosen_office].iloc[0]
             selected_loc = {"Town": row['officename'], "District": row['district'], "State": row['circlename'], "PIN": user_pin}
-            st.success(f"✅ Area: {selected_loc['Town']}, {selected_loc['District']}")
+            st.success(f"✅ Area Detected: {selected_loc['Town']}, {selected_loc['District']}")
         else:
             st.error("❌ PIN not found in database.")
-    elif user_pin and len(user_pin) < 6:
-        st.warning("⚠️ Pincode must be 6 digits.")
 
 # GPS & File Uploads
 col_gps, col_files = st.columns(2)
@@ -110,7 +108,7 @@ with col_gps:
 with col_files:
     uploaded_files = st.file_uploader("Attach Evidence (Photos/Videos):", accept_multiple_files=True)
 
-# 5. STEP 2: USER & ISSUE DETAILS (STRICT 10-DIGIT PHONE)
+# 5. STEP 2: USER & ISSUE DETAILS
 st.markdown("---")
 st.subheader("📝 Step 2: Reporter Details")
 user_name = st.text_input("Full Name (Sender):")
@@ -119,7 +117,6 @@ issue = st.text_area("Describe the local problem:")
 
 # 6. STEP 3: GENERATION
 if st.button("🚀 1. Generate Official Letter"):
-    # Validation
     phone_valid = True if not user_phone or (user_phone.isdigit() and len(user_phone) == 10) else False
     pin_valid = True if len(user_pin) == 6 else False
 
@@ -130,18 +127,33 @@ if st.button("🚀 1. Generate Official Letter"):
     elif not user_name or not selected_loc or not issue:
         st.error("⚠️ Missing required details.")
     else:
-        with st.spinner(f"Drafting formal letter in {target_language}..."):
-            contact_line = f"Contact: {user_phone}" if user_phone.strip() else ""
+        with st.spinner(f"Drafting formal petition in {target_language}..."):
+            contact_info = f"Contact: {user_phone}" if user_phone.strip() else ""
             gps_line = f"GPS Coordinates: {st.session_state.get('gps_coord', 'Not captured')}"
             evidence_count = len(uploaded_files) if uploaded_files else 0
 
             system_prompt = f"""
-            Draft a formal complaint in {target_language}.
-            FORMAT:
-            1. TOP RIGHT: Place '{current_date}' at the very top right.
-            2. RECIPIENT: 'To, The Municipal Commissioner, {selected_loc['Town']}, {selected_loc['District']}'.
-            3. SENDER: {user_name}, PIN: {selected_loc['PIN']}. {contact_line}
-            4. BODY: 3 paragraphs. Mention GPS: {gps_line} and {evidence_count} evidence files attached.
+            Draft a formal civic complaint in {target_language}.
+            
+            STRICT LAYOUT RULES:
+            1. DATE: Place '{current_date}' at the very TOP RIGHT.
+            
+            2. FROM SECTION:
+               From,
+               {user_name}
+               PIN: {selected_loc['PIN']}
+               {contact_info} (Skip this line if contact is not available)
+            
+            3. TO SECTION:
+               To,
+               The Municipal Commissioner,
+               {selected_loc['Town']}, {selected_loc['District']}.
+               PIN: {selected_loc['PIN']}
+            
+            4. BODY: 3 professional paragraphs. 
+               - Mention exact GPS: {gps_line}
+               - Mention {evidence_count} evidence files attached.
+            
             5. SIGN-OFF: Sincerely, {user_name}. Supported by The Reminder India community.
             
             END WITH: 'SUGGESTED_EMAIL: ' (Likely municipal email).
@@ -157,7 +169,7 @@ if st.button("🚀 1. Generate Official Letter"):
 # 7. STEP 4: REVIEW & SEND
 if "letter" in st.session_state:
     st.divider()
-    st.text_area("Final Letter Preview:", value=st.session_state.letter, height=450)
+    st.text_area("Final Letter Preview:", value=st.session_state.letter, height=500)
     
     col_pdf, col_to, col_cc = st.columns([1, 1, 1])
     with col_pdf:
