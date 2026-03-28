@@ -20,13 +20,11 @@ try:
 except:
     st.sidebar.error("Database connection issue.")
 
-# 2. LOCAL CSV ENGINE (Mapped to your specific columns)
+# 2. LOCAL CSV ENGINE
 @st.cache_data
 def load_pincode_db():
     try:
-        # Load your CSV from the GitHub repo
         df = pd.read_csv("pincodes.csv")
-        # Clean column names (lowercase/no spaces) to match your request
         df.columns = [c.strip().lower() for c in df.columns]
         df['pincode'] = df['pincode'].astype(str)
         return df
@@ -65,31 +63,27 @@ with col_title:
     st.title("The Reminder India")
     st.subheader("National Civic Action Desk")
 
-# 4. LOCATION & LANGUAGE (Dynamic Mapping)
+# 4. STEP 1: PINCODE & GPS MAPPING
 st.markdown("---")
-lang_col, pin_col, details_col = st.columns([2, 2, 3])
+st.subheader("📍 Step 1: Location & Evidence")
+lang_col, pin_col, details_col = st.columns([2, 2, 4])
 
 with lang_col:
-    target_language = st.selectbox("Select Language:", 
+    target_language = st.selectbox("Letter Language:", 
         ["English", "Hindi (हिन्दी)", "Bengali (বাংলা)", "Marathi (मराठी)", 
          "Telugu (తెలుగు)", "Tamil (தமிழ்)", "Punjabi (ਪੰਜਾਬੀ)", "Urdu (اردو)"])
 
 with pin_col:
-    user_pin = st.text_input("Enter 6-Digit PIN:", value="", max_chars=6, placeholder="e.g. 110006")
+    user_pin = st.text_input("Enter 6-Digit PIN:", value="", max_chars=6, placeholder="e.g. 110091")
 
-# Dynamic Logic for CSV Columns
+# Selection Logic for CSV
 selected_loc = None
 with details_col:
     if user_pin and pincode_df is not None:
-        # Search the CSV
         matches = pincode_df[pincode_df['pincode'] == str(user_pin)]
-        
         if not matches.empty:
-            # User chooses the specific 'officename' (Town/City)
             office_list = matches['officename'].unique().tolist()
             chosen_office = st.selectbox("Select Town/City (from Officename):", office_list)
-            
-            # Map the rest of the columns for that selection
             final_match = matches[matches['officename'] == chosen_office].iloc[0]
             selected_loc = {
                 "Town": final_match['officename'], 
@@ -97,23 +91,39 @@ with details_col:
                 "State": final_match['circlename'], 
                 "PIN": user_pin
             }
-            # Visual Confirmation for User
-            st.success(f"✅ Found: {selected_loc['Town']}, {selected_loc['District']}, {selected_loc['State']}")
+            st.success(f"✅ Area Detected: {selected_loc['Town']}, {selected_loc['District']}")
         else:
             st.error("❌ PIN not found in database.")
 
-# 5. USER INPUTS
-user_name = st.text_input("Full Name (Sender):")
-user_phone = st.text_input("Contact Number (Optional):")
-issue = st.text_area("Describe the local problem:")
+# GPS & Files
+col_gps, col_files = st.columns(2)
+with col_gps:
+    if st.button("🛰️ Capture Exact GPS Coordinates"):
+        location = streamlit_js_eval(data_key='pos', func_name='getCurrentPosition', want_output=True)
+        if location:
+            lat_lon = f"Lat: {location['coords']['latitude']}, Lon: {location['coords']['longitude']}"
+            st.session_state.gps_coord = lat_lon
+            st.success(f"GPS Captured: {lat_lon}")
 
-# 6. STEP 1: GENERATE LETTER
-if st.button("🚀 1. Generate Official Letter"):
+with col_files:
+    uploaded_files = st.file_uploader("Attach Photo/Video Evidence:", accept_multiple_files=True)
+
+# 5. STEP 2: USER & ISSUE DETAILS
+st.markdown("---")
+st.subheader("📝 Step 2: Report Details")
+user_name = st.text_input("Your Full Name:")
+user_phone = st.text_input("Contact Number (Optional):")
+issue = st.text_area("Describe the problem (e.g., Overflowing drain at the corner of Main St):")
+
+# 6. STEP 3: GENERATE & EMAIL
+if st.button("🚀 Generate & Prepare Email"):
     if not user_name or not selected_loc or not issue:
-        st.error("⚠️ Please provide Name, valid PIN/Town, and Issue.")
+        st.error("⚠️ Please provide Name, valid PIN, and Issue description.")
     else:
-        with st.spinner("Drafting formal letter..."):
+        with st.spinner("Drafting high-precision report..."):
             contact_line = f"Contact: {user_phone}" if user_phone.strip() else ""
+            gps_line = f"Exact GPS Location: {st.session_state.get('gps_coord', 'Not captured')}"
+            evidence_count = len(uploaded_files) if uploaded_files else 0
             
             system_prompt = f"""
             Draft a formal complaint in {target_language}.
@@ -122,15 +132,19 @@ if st.button("🚀 1. Generate Official Letter"):
             {contact_line}
             DATE: {current_date}
 
-            LOCATION FACTS:
+            LOCATION DETAILS:
             - Town/City: {selected_loc['Town']}
             - District: {selected_loc['District']}
             - State: {selected_loc['State']}
+            - {gps_line}
+
+            ISSUE: {issue}
+            EVIDENCE: {evidence_count} files attached to this email.
 
             STRICT RULES:
             1. RECIPIENT: Start with 'To,'. Address it to the Municipal Commissioner of {selected_loc['Town']}.
-            2. DATE: Always include {current_date} at the top.
-            3. No guesses. Only use the Town, District, and State provided above.
+            2. Mention the GPS coordinates in the body to show the exact location of the issue.
+            3. Mention that photographic/video evidence is attached.
             4. SIGN-OFF: Sincerely, {user_name}. Supported by The Reminder India community.
             
             END WITH: 'SUGGESTED_EMAIL: ' (Likely municipal email).
@@ -143,37 +157,37 @@ if st.button("🚀 1. Generate Official Letter"):
             st.session_state.letter = res_content.split("SUGGESTED_EMAIL:")[0].strip()
             st.session_state.suggested_email = res_content.split("SUGGESTED_EMAIL:")[1].strip() if "SUGGESTED_EMAIL:" in res_content else ""
 
-# 7. STEP 2: REVIEW & EMAIL CONTROLS
+# REVIEW & EMAIL
 if "letter" in st.session_state:
     st.divider()
-    st.subheader("📝 Review & Recipients")
-    st.text_area("Final Letter Draft:", value=st.session_state.letter, height=350)
+    st.subheader("📬 Review & Submit")
+    st.text_area("Letter Preview:", value=st.session_state.letter, height=350)
     
     col_to, col_cc, col_bcc = st.columns(3)
     with col_to:
-        rec_to = st.text_input("To (Primary):", value=st.session_state.suggested_email)
+        rec_to = st.text_input("To (Recipient):", value=st.session_state.suggested_email)
     with col_cc:
-        rec_cc = st.text_input("CC (Public):", placeholder="news@media.com")
+        rec_cc = st.text_input("CC:", placeholder="news@media.com")
     with col_bcc:
-        rec_bcc = st.text_input("BCC (Private):", placeholder="archive@tri.com")
+        rec_bcc = st.text_input("BCC (Secret):", placeholder="archive@tri.com")
 
-    # Download PDF
-    pdf_bytes = create_pdf(st.session_state.letter)
-    st.download_button("📥 Download PDF", data=pdf_bytes, file_name=f"Complaint_{user_pin}.pdf")
-
-    if st.button("📧 2. Send Official Email"):
+    if st.button("📧 Final Send Email"):
         if not rec_to:
-            st.error("❌ Recipient email is required.")
+            st.error("❌ Need a recipient email.")
         else:
             with st.spinner("Sending..."):
                 try:
                     msg = EmailMessage()
                     msg.set_content(st.session_state.letter)
-                    msg['Subject'] = f"CIVIC COMPLAINT: {selected_loc['Town']} - {user_name}"
+                    msg['Subject'] = f"CIVIC COMPLAINT: {selected_loc['Town']} ({selected_loc['PIN']}) - {user_name}"
                     msg['From'] = SENDER_EMAIL
                     msg['To'] = rec_to
                     if rec_cc: msg['Cc'] = rec_cc
                     if rec_bcc: msg['Bcc'] = rec_bcc
+                    
+                    if uploaded_files:
+                        for f in uploaded_files:
+                            msg.add_attachment(f.read(), maintype='application', subtype='octet-stream', filename=f.name)
                     
                     smtp = smtplib.SMTP_SSL('smtp.gmail.com', 465)
                     smtp.login(SENDER_EMAIL, APP_PASSWORD)
@@ -181,11 +195,11 @@ if "letter" in st.session_state:
                     smtp.quit()
                     
                     # Log to Sheets
-                    new_entry = pd.DataFrame([{"Timestamp": datetime.now(), "Name": user_name, "Town": selected_loc['Town'], "PIN": user_pin}])
+                    new_entry = pd.DataFrame([{"Timestamp": datetime.now(), "Name": user_name, "Town": selected_loc['Town'], "PIN": user_pin, "GPS": st.session_state.get('gps_coord', 'N/A')}])
                     all_data = pd.concat([conn.read(), new_entry], ignore_index=True)
                     conn.update(data=all_data)
 
-                    st.success("✅ Sent Successfully!")
+                    st.success("✅ Reported Successfully!")
                     st.balloons()
                 except Exception as e:
                     st.error(f"Error: {e}")
