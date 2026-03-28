@@ -1,3 +1,4 @@
 openai
 fpdf
 pandas
+st-gsheets-connection

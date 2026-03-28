@@ -5,31 +5,21 @@ from email.message import EmailMessage
 from fpdf import FPDF
 import pandas as pd
 from datetime import datetime
-import os
+from streamlit_gsheets import GSheetsConnection
 
 # 1. Setup
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 SENDER_EMAIL = st.secrets["SENDER_EMAIL"]
 APP_PASSWORD = st.secrets["APP_PASSWORD"]
+current_date = datetime.now().strftime("%B %d, %Y")
 
-# File to store history locally on the server
-HISTORY_FILE = "complaint_history.csv"
+# Connect to Google Sheets
+try:
+    conn = st.connection("gsheets", type=GSheetsConnection)
+except:
+    st.sidebar.error("GSheets Secret not found. Check your Settings > Secrets.")
 
-# 2. Helper Functions
-def save_to_history(name, pincode, issue, recipient):
-    new_data = {
-        "Timestamp": [datetime.now().strftime("%Y-%m-%d %H:%M:%S")],
-        "Name": [name],
-        "Pincode": [pincode],
-        "Issue": [issue[:50] + "..."], # Store a summary
-        "Recipient": [recipient]
-    }
-    df = pd.DataFrame(new_data)
-    if not os.path.isfile(HISTORY_FILE):
-        df.to_csv(HISTORY_FILE, index=False)
-    else:
-        df.to_csv(HISTORY_FILE, mode='a', header=False, index=False)
-
+# 2. PDF Function
 def create_pdf(text):
     pdf = FPDF()
     pdf.add_page()
@@ -38,73 +28,118 @@ def create_pdf(text):
         pdf.multi_cell(0, 10, txt=line, align='L')
     return pdf.output(dest='S').encode('latin-1')
 
-# 3. Interface
-st.set_page_config(page_title="Civic Action Desk", page_icon="🏛️")
-st.title("National Civic Action Desk")
-st.caption("Official Tool | The Reminder India")
+# 3. Interface & Branding
+st.set_page_config(page_title="The Reminder India", page_icon="🏛️")
+# Replace with your actual YouTube Logo Link
+logo_url = "https://www.facebook.com/photo/?fbid=122097222099239425&set=pb.61587182761969.-2207520000" 
 
-if "generated_letter" not in st.session_state:
-    st.session_state.generated_letter = None
+col1, col2 = st.columns([1, 4])
+with col1:
+    st.image(logo_url, width=80)
+with col2:
+    st.title("The Reminder India")
+    st.subheader("National Civic Action Desk")
 
-# Sidebar for Impact Stats
-if os.path.isfile(HISTORY_FILE):
-    history_df = pd.read_csv(HISTORY_FILE)
-    st.sidebar.metric("Total Complaints Filed", len(history_df))
-    st.sidebar.subheader("Recent Activity")
-    st.sidebar.dataframe(history_df.tail(5), hide_index=True)
+# Sidebar Stats
+try:
+    existing_data = conn.read(ttl="1m")
+    st.sidebar.metric("Total Complaints Filed", len(existing_data))
+except:
+    st.sidebar.info("Database connecting...")
 
-# Main Inputs
-user_name = st.text_input("Full Name:")
-pincode = st.text_input("6-Digit Pincode:", max_chars=6)
-uploaded_files = st.file_uploader("Upload Photos/Videos:", accept_multiple_files=True)
-issue = st.text_area("Describe the issue:")
+# 4. User Inputs
+user_name = st.text_input("Full Name:", placeholder="Enter your name")
+pincode = st.text_input("6-Digit Pincode:", max_chars=6, placeholder="e.g. 110091")
+uploaded_files = st.file_uploader("Attach Evidence:", type=["jpg", "png", "jpeg", "mp4", "mov"], accept_multiple_files=True)
+issue = st.text_area("Describe the local problem:")
 
-# 4. Action Logic
-if st.button("🚀 1. Generate Letter"):
-    if pincode and issue:
-        with st.spinner("Drafting..."):
-            system_prompt = f"Draft a formal Indian civic complaint for Pincode {pincode}. End with 'Supported by The Reminder India'."
+# 5. Smart AI Generation
+if st.button("🚀 1. Generate Official Letter"):
+    if not (pincode and len(pincode) == 6) or not issue:
+        st.error("Please enter a valid Pincode and Issue.")
+    else:
+        with st.spinner("Drafting letter and identifying authority..."):
+            # We tell the AI the Date and your Email to fill the placeholders
+            system_prompt = f"""
+            You are a Senior Civic Advocate. 
+            DATE: {current_date}
+            SENDER_EMAIL: {SENDER_EMAIL}
+            
+            TASKS:
+            1. Write a formal complaint for Pincode {pincode}.
+            2. Use the DATE provided above. Do not use [Insert Date].
+            3. Sign off with '{user_name}' and the SENDER_EMAIL provided.
+            4. At the VERY END of your response, on a new line, write 'SUGGESTED_EMAIL: ' followed by the 
+               official municipal email address for this pincode (e.g., commissioner@mcd.nic.in for Delhi).
+            """
+            
             response = client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[{"role": "system", "content": system_prompt},
-                          {"role": "user", "content": f"Issue: {issue}\nName: {user_name}"}]
+                          {"role": "user", "content": f"Issue: {issue}"}]
             )
-            st.session_state.generated_letter = response.choices[0].message.content
+            
+            full_res = response.choices[0].message.content
+            
+            # Extract the Suggested Email from the AI's response
+            if "SUGGESTED_EMAIL:" in full_res:
+                letter_text = full_res.split("SUGGESTED_EMAIL:")[0].strip()
+                suggested_email = full_res.split("SUGGESTED_EMAIL:")[1].strip()
+            else:
+                letter_text = full_res
+                suggested_email = ""
 
-if st.session_state.generated_letter:
+            st.session_state.letter = letter_text
+            st.session_state.suggested_email = suggested_email
+
+# 6. Review & Send
+if "letter" in st.session_state:
     st.divider()
-    st.text_area("Review Draft:", value=st.session_state.generated_letter, height=250)
+    st.text_area("Final Letter:", value=st.session_state.letter, height=350)
     
     # PDF Download
-    pdf_data = create_pdf(st.session_state.generated_letter)
-    st.download_button("📥 Download PDF", data=pdf_data, file_name=f"Complaint_{pincode}.pdf")
+    pdf_bytes = create_pdf(st.session_state.letter)
+    st.download_button("📥 Download PDF", data=pdf_bytes, file_name=f"Complaint_{pincode}.pdf")
 
-    recipient_email = st.text_input("Recipient Email:", placeholder="Enter authority email")
+    st.markdown("### Step 2: Send to Authority")
+    
+    # This box now automatically fills with the AI's suggestion
+    recipient = st.text_input("Authority Email Address:", value=st.session_state.suggested_email)
+    st.caption("Check [lgdirectory.gov.in](https://lgdirectory.gov.in/) to verify this email.")
 
     if st.button("📧 2. Send Email Now"):
-        if recipient_email:
-            with st.spinner("Sending and Logging..."):
+        if not recipient:
+            st.error("Please enter a recipient email.")
+        else:
+            with st.spinner("Sending..."):
                 try:
-                    # EMAIL LOGIC
                     msg = EmailMessage()
-                    msg.set_content(st.session_state.generated_letter)
-                    msg['Subject'] = f"CIVIC COMPLAINT: Pincode {pincode}"
+                    msg.set_content(st.session_state.letter)
+                    msg['Subject'] = f"URGENT: Civic Complaint - Pincode {pincode}"
                     msg['From'] = SENDER_EMAIL
-                    msg['To'] = recipient_email
+                    msg['To'] = recipient
+                    
                     if uploaded_files:
                         for f in uploaded_files:
                             msg.add_attachment(f.read(), maintype='application', subtype='octet-stream', filename=f.name)
-                    
-                    server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
-                    server.login(SENDER_EMAIL, APP_PASSWORD)
-                    server.send_message(msg)
-                    server.quit()
 
-                    # LOGGING LOGIC
-                    save_to_history(user_name, pincode, issue, recipient_email)
+                    smtp = smtplib.SMTP_SSL('smtp.gmail.com', 465)
+                    smtp.login(SENDER_EMAIL, APP_PASSWORD)
+                    smtp.send_message(msg)
+                    smtp.quit()
                     
-                    st.success("Sent & Logged in History!")
+                    # Log to Google Sheets
+                    new_entry = pd.DataFrame([{
+                        "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        "Name": user_name,
+                        "Pincode": pincode,
+                        "Issue": issue[:100],
+                        "Recipient": recipient
+                    }])
+                    updated_df = pd.concat([existing_data, new_entry], ignore_index=True)
+                    conn.update(data=updated_df)
+
+                    st.success("Sent Successfully!")
                     st.balloons()
-                    st.rerun() # Refresh to update the sidebar count
                 except Exception as e:
                     st.error(f"Error: {e}")
