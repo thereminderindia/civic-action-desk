@@ -40,21 +40,25 @@ def load_pincode_db():
     except:
         return None
 
+# PDF ENGINE (Protected against crashes)
 def create_pdf(text):
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", size=11)
-    for line in text.split('\n'):
-        if current_date in line:
-            pdf.cell(0, 10, txt=line, ln=True, align='R')
-        else:
-            pdf.multi_cell(0, 10, txt=line, align='L')
-    return pdf.output(dest='S').encode('latin-1', 'ignore')
+    try:
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", size=11)
+        for line in text.split('\n'):
+            if current_date in line:
+                pdf.cell(0, 10, txt=line, ln=True, align='R')
+            else:
+                pdf.multi_cell(0, 10, txt=line, align='L')
+        return pdf.output(dest='S').encode('latin-1', 'ignore')
+    except Exception as e:
+        return None
 
 # 3. INTERFACE & SIDEBAR
 st.set_page_config(page_title="The Reminder India", page_icon="🏛️", layout="wide")
 
-# --- CUSTOM CSS TO HIDE STREAMLIT'S "PRESS ENTER" TEXT ---
+# CSS TO HIDE STREAMLIT'S "PRESS ENTER" TEXT
 st.markdown("""
     <style>
         div[data-testid="InputInstructions"] {
@@ -138,14 +142,13 @@ st.markdown("---")
 st.subheader("📝 Step 2: Reporter Details")
 user_name = st.text_input("Full Name (Sender):")
 
-# --- SMART PHONE VALIDATION ---
+# SMART PHONE VALIDATION
 user_phone = st.text_input("Contact Number (Optional):", max_chars=10)
 if user_phone:
     if not user_phone.isdigit():
         st.error("⚠️ Phone number must contain numbers only.")
     elif len(user_phone) < 10:
         st.warning("⚠️ Please enter the full 10-digit number.")
-    # If it is exactly 10 digits and numbers, it goes completely silent (valid).
 
 issue = st.text_area("Describe the local problem:")
 
@@ -227,9 +230,21 @@ if "letter" in st.session_state:
         rec_bcc = st.text_input("BCC (Secret Archive):", value="")
 
     col_btn1, col_btn2 = st.columns(2)
+    
+    # --- THE MULTI-LINGUAL DOWNLOAD FIX ---
     with col_btn1:
-        pdf_bytes = create_pdf(st.session_state.letter)
-        st.download_button("📥 Download Print PDF", data=pdf_bytes, file_name=f"TRI_Report_{user_pin}.pdf")
+        if target_language == "English":
+            pdf_bytes = create_pdf(st.session_state.letter)
+            if pdf_bytes:
+                st.download_button("📥 Download Print PDF", data=pdf_bytes, file_name=f"TRI_Report_{user_pin}.pdf", mime="application/pdf")
+            else:
+                st.error("Error generating PDF.")
+        else:
+            # Regional languages safely save as a UTF-8 text file to prevent character crashing
+            txt_bytes = st.session_state.letter.encode('utf-8')
+            st.download_button("📥 Download Letter (Text File)", data=txt_bytes, file_name=f"TRI_Report_{user_pin}.txt", mime="text/plain")
+            st.caption("📝 Saved as a Text File to support Indian script characters.")
+
     with col_btn2:
         if st.button("📧 Send Official Email Now"):
             if not is_valid_email(rec_to) or not is_valid_email(rec_cc) or not is_valid_email(rec_bcc):
