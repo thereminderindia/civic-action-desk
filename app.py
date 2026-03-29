@@ -143,6 +143,8 @@ with col_gps:
 
 with col_files:
     uploaded_files = st.file_uploader("Attach Evidence (Photos/Videos):", accept_multiple_files=True)
+    # 💡 ADDITION 1: The Perfect Photo Tip
+    st.caption("💡 Tip: Try to include a nearby landmark or street sign in your photo so officials can locate the issue faster.")
     
     if uploaded_files:
         st.session_state.file_vault = [] 
@@ -200,14 +202,20 @@ if user_phone:
     elif len(user_phone) < 10:
         st.warning("⚠️ Please enter the full 10-digit number.")
 
-issue = st.text_area("Describe the local problem:")
+# 💡 ADDITION 2: Quick Issue Dropdown
+issue_category = st.selectbox("Quick Issue Select (Optional):", 
+    ["", "Uncollected Garbage", "Broken Road / Pothole", "Clogged Drainage", "Non-functional Streetlight", "Contaminated Water", "Other"])
+issue_details = st.text_area("Describe the local problem (Specific details, location, etc.):")
+
+# Combine the category and details seamlessly for the AI
+issue = f"Category: {issue_category}\nDetails: {issue_details}" if issue_category else issue_details
 
 # 6. STEP 3: GENERATION
 if st.button("🚀 1. Generate Official Letter"):
     if "letter" in st.session_state:
         del st.session_state["letter"]
         
-    if not user_name or not selected_loc or not issue or len(user_pin) != 6:
+    if not user_name or not selected_loc or not issue.strip() or len(user_pin) != 6:
         st.error("⚠️ Please complete all fields correctly.")
     else:
         with st.spinner(f"Drafting formal petition..."):
@@ -312,7 +320,6 @@ if "letter" in st.session_state:
         st.caption("By clicking send, you agree to our [Privacy Policy](https://sites.google.com/view/thereminderindia/home).")
         
         if st.button("📧 Send Official Email Now"):
-            # ... rest of the code
             combined_bcc_list = []
             if rec_bcc: combined_bcc_list.append(rec_bcc)
             if user_receipt: combined_bcc_list.append(user_receipt)
@@ -371,7 +378,8 @@ if "letter" in st.session_state:
                             smtp.send_message(msg)
                             smtp.quit()
                             
-                            st.success("✅ Reported Successfully! Check your email for the receipt.")
+                            # 💡 ADDITION 3: The Enhanced Success Message
+                            st.success("✅ Official Letter Sent! Please check your email (and Spam folder) for your receipt. If the issue is not resolved in 7 days, we encourage you to follow up.")
                             st.balloons()
                         except Exception as e:
                             st.error(f"Error sending email: {e}")
