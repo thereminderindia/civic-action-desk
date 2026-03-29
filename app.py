@@ -134,7 +134,33 @@ with col_gps:
             st.success(f"✅ GPS Captured! Navigation Link generated.")
 
 with col_files:
-    uploaded_files = st.file_uploader("Attach Evidence (Photos/Videos):", accept_multiple_files=True)
+    # 1. Define every common image and video format
+    allowed_media = [
+        "png", "jpg", "jpeg", "gif", "bmp", "webp", "heic", "heif", # Image formats
+        "mp4", "mov", "avi", "mkv", "webm", "wmv"                   # Video formats
+    ]
+    
+    # 2. Inject them into the uploader
+    uploaded_files = st.file_uploader(
+        "Attach Evidence (Photos/Videos):", 
+        type=allowed_media, 
+        accept_multiple_files=True
+    )
+    
+    # --- PREVIEW LOGIC REMAINS THE SAME ---
+    if uploaded_files:
+        st.markdown("📄 **Attached Previews:**")
+        preview_cols = st.columns(2) 
+        
+        for i, f in enumerate(uploaded_files):
+            with preview_cols[i % 2]: 
+                if f.type and f.type.startswith('image'):
+                    st.image(f, use_container_width=True, caption=f.name)
+                elif f.type and f.type.startswith('video'):
+                    st.video(f)
+                    st.caption(f.name)
+                else:
+                    st.info(f"📎 {f.name} attached.")
 
 # 5. STEP 2: REPORTER DETAILS
 st.markdown("---")
