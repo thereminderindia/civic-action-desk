@@ -1,7 +1,6 @@
-streamlit
 openai
-pandas
 fpdf
-segno
-streamlit-gsheets
+pandas
+st-gsheets-connection
 streamlit-js-eval
+requests
