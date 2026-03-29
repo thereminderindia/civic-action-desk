@@ -1,7 +1,10 @@
 import streamlit as st
 from openai import OpenAI
 import smtplib
-from email.message import EmailMessage
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email import encoders
 from fpdf import FPDF
 import pandas as pd
 import re
@@ -301,20 +304,21 @@ if "letter" in st.session_state:
                 else:
                     with st.spinner("Preparing secure attachments & sending email..."):
                         try:
-                            msg = EmailMessage()
-                            msg.set_content(st.session_state.letter)
+                            # --- THE NEW MULTIPART EMAIL LOGIC ---
+                            msg = MIMEMultipart()
                             msg['Subject'] = f"CIVIC COMPLAINT: {selected_loc['Town']} - {user_name}"
                             msg['From'] = SENDER_EMAIL
                             msg['To'] = rec_to
                             if rec_cc: msg['Cc'] = rec_cc
                             if final_bcc_string: msg['Bcc'] = final_bcc_string
                             
-                            # --- MOBILE EMAIL ATTACHMENT LOGIC ---
+                            # 1. Attach the Text Body
+                            msg.attach(MIMEText(st.session_state.letter, 'plain'))
+                            
+                            # 2. Attach the Files explicitly to force the Paperclip Icon
                             if uploaded_files:
                                 for f in uploaded_files:
-                                    # Use the securely grabbed raw bytes
                                     file_data = f.getvalue() 
-                                    
                                     mime_type = f.type if f.type else 'application/octet-stream'
                                     if '/' not in mime_type:
                                         mime_type = 'application/octet-stream'
@@ -322,7 +326,6 @@ if "letter" in st.session_state:
                                     maintype, subtype = mime_type.split('/', 1)
                                     clean_filename = f.name.split("/")[-1].split("\\")[-1]
                                     
-                                    # Force an extension if missing
                                     if '.' not in clean_filename:
                                         ext = mimetypes.guess_extension(mime_type)
                                         if ext:
@@ -330,7 +333,15 @@ if "letter" in st.session_state:
                                         else:
                                             clean_filename += ".bin"
                                             
-                                    msg.add_attachment(file_data, maintype=maintype, subtype=subtype, filename=clean_filename)
+                                    # Create the physical attachment package
+                                    part = MIMEBase(maintype, subtype)
+                                    part.set_payload(file_data)
+                                    
+                                    # THIS is the magic line that guarantees Gmail shows the attachment cards
+                                    encoders.encode_base64(part) 
+                                    part.add_header('Content-Disposition', f'attachment; filename="{clean_filename}"')
+                                    
+                                    msg.attach(part)
                             # --------------------------------------
                             
                             smtp = smtplib.SMTP_SSL('smtp.gmail.com', 465)
