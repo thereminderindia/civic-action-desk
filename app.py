@@ -100,26 +100,12 @@ def get_base64_of_bin_file(bin_file):
 banner_base64 = get_base64_of_bin_file("banner.jpg")
 
 if banner_base64:
+    # 💡 CHANGED: We now use a true <img> tag with "height: auto" so it never crops!
     header_banner_html = f"""
-    <style>
-        .tri-header-banner {{
-            background-image: url('data:image/jpeg;base64,{banner_base64}');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-            height: 250px; 
-            border-radius: 12px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-            margin-bottom: 2em;
-            border: 2px solid #ffffff;
-        }}
-        @media (max-width: 600px) {{
-            .tri-header-banner {{
-                height: 150px;
-            }}
-        }}
-    </style>
-    <div class="tri-header-banner"></div>
+    <div style="margin-bottom: 2em; text-align: center;">
+        <img src="data:image/jpeg;base64,{banner_base64}" 
+             style="width: 100%; height: auto; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); border: 2px solid #ffffff;">
+    </div>
     """
 else:
     header_banner_html = """
