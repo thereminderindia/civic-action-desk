@@ -13,6 +13,12 @@ from datetime import datetime
 from streamlit_gsheets import GSheetsConnection
 from streamlit_js_eval import streamlit_js_eval
 import urllib.parse
+import base64
+import os
+
+# --- INITIALIZE RESET COUNTER ---
+if "reset_counter" not in st.session_state:
+    st.session_state.reset_counter = 0
 
 # 1. SETUP & AUTHENTICATION
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
@@ -83,16 +89,48 @@ st.sidebar.link_button("📄 Privacy Policy", "https://sites.google.com/view/the
 
 pincode_df = load_pincode_db()
 
-# Ensure you have your logo.jpg in the same folder!
-col_logo, col_title = st.columns([1, 5])
-with col_logo:
-    try:
-        st.image("logo.jpg", width=90)
-    except:
-        st.title("🏛️")
-with col_title:
-    st.title("The Reminder India")
-    st.subheader("National Civic Action Desk")
+# --- NEW HEADER BANNER WITH CUSTOM BACKGROUND IMAGE ---
+def get_base64_of_bin_file(bin_file):
+    if os.path.exists(bin_file):
+        with open(bin_file, 'rb') as f:
+            data = f.read()
+        return base64.b64encode(data).decode()
+    return None
+
+banner_base64 = get_base64_of_bin_file("banner.jpg")
+
+if banner_base64:
+    header_banner_html = f"""
+    <style>
+        .tri-header-banner {{
+            background-image: url('data:image/jpeg;base64,{banner_base64}');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            height: 250px; 
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            margin-bottom: 2em;
+            border: 2px solid #ffffff;
+        }}
+        @media (max-width: 600px) {{
+            .tri-header-banner {{
+                height: 150px;
+            }}
+        }}
+    </style>
+    <div class="tri-header-banner"></div>
+    """
+else:
+    header_banner_html = """
+    <div style="background-color: #1E1E1E; padding: 2em; border-radius: 12px; text-align: center; margin-bottom: 2em;">
+        <h1 style="color: white; margin:0;">🏛️ The Reminder India</h1>
+        <h3 style="color: #aaaaaa; margin:0;">National Civic Action Desk</h3>
+    </div>
+    """
+
+st.markdown(header_banner_html, unsafe_allow_html=True)
+# --- END OF NEW HEADER BLOCK ---
 
 # 4. STEP 1: LANGUAGE & LOCATION
 st.markdown("---")
@@ -100,8 +138,7 @@ st.subheader("📍 Step 1: Language & Location")
 lang_col, pin_col, details_col = st.columns([2, 2, 4])
 
 with lang_col:
-    # ADDED KEY HERE
-    target_language = st.selectbox("Select Letter Language:", key="lang", options=
+    target_language = st.selectbox("Select Letter Language:", key=f"lang_{st.session_state.reset_counter}", options=
         ["English", "Hindi (हिन्दी)", "Bengali (বাংলা)", "Marathi (मराठी)", 
          "Telugu (తెలుగు)", "Tamil (தமிழ்)", "Gujarati (ગુજરાતી)", 
          "Urdu (اردو)", "Kannada (କನ್ನಡ)", "Odia (ଓଡ଼ିଆ)", 
@@ -111,8 +148,7 @@ with lang_col:
          "Dogri (डोगरी)", "Manipuri (মৈতৈলোন)", "Bodo (बर')", "Sanskrit (संस्कृतम्)"])
 
 with pin_col:
-    # ADDED KEY HERE
-    user_pin = st.text_input("Enter 6-Digit PIN:", value="", max_chars=6, key="pin")
+    user_pin = st.text_input("Enter 6-Digit PIN:", value="", max_chars=6, key=f"pin_{st.session_state.reset_counter}")
     if user_pin and (not user_pin.isdigit() or len(user_pin) != 6):
         st.error("⚠️ Pincode must be exactly 6 digits.")
 
@@ -122,8 +158,7 @@ if user_pin and len(user_pin) == 6 and pincode_df is not None:
     if not matches.empty:
         with details_col:
             office_list = matches['officename'].unique().tolist()
-            # ADDED KEY HERE
-            chosen_office = st.selectbox("Confirm Town/City:", office_list, key="office")
+            chosen_office = st.selectbox("Confirm Town/City:", office_list, key=f"office_{st.session_state.reset_counter}")
             row = matches[matches['officename'] == chosen_office].iloc[0]
             selected_loc = {"Town": row['officename'], "District": row['district'], "State": row['circlename'], "PIN": user_pin}
             st.success(f"✅ Area: {selected_loc['Town']}, {selected_loc['District']}")
@@ -137,7 +172,7 @@ if user_pin and len(user_pin) == 6 and pincode_df is not None:
 # --- THE BULLETPROOF MOBILE UPLOADER ---
 col_gps, col_files = st.columns(2)
 with col_gps:
-    if st.button("🛰️ Capture Exact GPS"):
+    if st.button("🛰️ Capture Exact GPS", key=f"gps_{st.session_state.reset_counter}"):
         loc = streamlit_js_eval(data_key='pos', func_name='getCurrentPosition', want_output=True)
         if loc:
             lat, lon = loc['coords']['latitude'], loc['coords']['longitude']
@@ -145,8 +180,7 @@ with col_gps:
             st.success(f"✅ GPS Captured! Navigation Link generated.")
 
 with col_files:
-    # ADDED KEY HERE
-    uploaded_files = st.file_uploader("Attach Evidence (Photos/Videos):", accept_multiple_files=True, key="evidence")
+    uploaded_files = st.file_uploader("Attach Evidence (Photos/Videos):", accept_multiple_files=True, key=f"evidence_{st.session_state.reset_counter}")
     st.caption("💡 Tip: Try to include a nearby landmark or street sign in your photo so officials can locate the issue faster.")
     
     if uploaded_files:
@@ -186,28 +220,24 @@ with col_files:
 # 5. STEP 2: REPORTER DETAILS   
 st.markdown("---")
 st.subheader("📝 Step 2: Reporter Details")
-# ADDED KEY HERE
-user_name = st.text_input("Full Name (Sender):", key="sender_name")
+user_name = st.text_input("Full Name (Sender):", key=f"sender_name_{st.session_state.reset_counter}")
 
-# ADDED KEY HERE
-user_phone = st.text_input("Contact Number (Optional):", max_chars=10, key="sender_phone")
+user_phone = st.text_input("Contact Number (Optional):", max_chars=10, key=f"sender_phone_{st.session_state.reset_counter}")
 if user_phone:
     if not user_phone.isdigit():
         st.error("⚠️ Phone number must contain numbers only.")
     elif len(user_phone) < 10:
         st.warning("⚠️ Please enter the full 10-digit number.")
 
-# ADDED KEY HERE
-issue_category = st.selectbox("Quick Issue Select (Optional):", key="category", options=
+issue_category = st.selectbox("Quick Issue Select (Optional):", key=f"category_{st.session_state.reset_counter}", options=
     ["", "Uncollected Garbage", "Broken Road / Pothole", "Clogged Drainage", "Non-functional Streetlight", "Contaminated Water", "Other"])
-# ADDED KEY HERE
-issue_details = st.text_area("Describe the local problem (Specific details, location, etc.):", key="details")
 
-# Combine the category and details seamlessly for the AI
+issue_details = st.text_area("Describe the local problem (Specific details, location, etc.):", key=f"details_{st.session_state.reset_counter}")
+
 issue = f"Category: {issue_category}\nDetails: {issue_details}" if issue_category else issue_details
 
 # 6. STEP 3: GENERATION
-if st.button("🚀 1. Generate Official Letter"):
+if st.button("🚀 1. Generate Official Letter", key=f"gen_{st.session_state.reset_counter}"):
     if "letter" in st.session_state:
         del st.session_state["letter"]
         
@@ -267,7 +297,6 @@ if st.button("🚀 1. Generate Official Letter"):
             res_content = response.choices[0].message.content.replace("```", "").strip()
             st.session_state.letter = res_content.split("SUGGESTED_EMAIL:")[0].strip()
             
-            # Extract the email and filter out the bot-protection text
             raw_email = res_content.split("SUGGESTED_EMAIL:")[1].strip() if "SUGGESTED_EMAIL:" in res_content else ""
             if "[email protected]" in raw_email:
                 raw_email = ""
@@ -278,24 +307,20 @@ if st.button("🚀 1. Generate Official Letter"):
 if "letter" in st.session_state:
     st.divider()
     st.subheader("📬 Step 4: Final Review & Email Controls")
-    st.text_area("Letter Content:", value=st.session_state.letter, height=400)
+    st.text_area("Letter Content:", value=st.session_state.letter, height=400, key=f"review_text_{st.session_state.reset_counter}")
     
     st.markdown("##### 📨 Email Routing")
     col_to, col_cc = st.columns(2)
     with col_to:
-        # ADDED KEY HERE
-        rec_to = st.text_input("To (Primary Official):", value=st.session_state.sug_email, key="rec_to")
+        rec_to = st.text_input("To (Primary Official):", value=st.session_state.sug_email, key=f"rec_to_{st.session_state.reset_counter}")
     with col_cc:
-        # ADDED KEY HERE
-        rec_cc = st.text_input("CC (Public Copy):", value="", key="rec_cc")
+        rec_cc = st.text_input("CC (Public Copy):", value="", key=f"rec_cc_{st.session_state.reset_counter}")
         
     col_bcc, col_me = st.columns(2)
     with col_bcc:
-        # ADDED KEY HERE
-        rec_bcc = st.text_input("BCC (Secret Archive):", value="", key="rec_bcc")
+        rec_bcc = st.text_input("BCC (Secret Archive):", value="", key=f"rec_bcc_{st.session_state.reset_counter}")
     with col_me:
-        # ADDED KEY HERE
-        user_receipt = st.text_input("Your Email (For Receipt Copy):", value="", key="user_receipt")
+        user_receipt = st.text_input("Your Email (For Receipt Copy):", value="", key=f"user_receipt_{st.session_state.reset_counter}")
 
     dispatch_log = f"\n\n{'-'*40}\nOFFICIAL DISPATCH RECORD\n{'-'*40}\n"
     dispatch_log += f"Sent To: {rec_to if rec_to else 'Pending'}\n"
@@ -314,17 +339,17 @@ if "letter" in st.session_state:
         if target_language == "English":
             pdf_bytes = create_pdf(final_download_text)
             if pdf_bytes:
-                st.download_button("📥 Download Print PDF (With Dispatch Log)", data=pdf_bytes, file_name=f"TRI_Report_{user_pin}.pdf", mime="application/pdf")
+                st.download_button("📥 Download Print PDF (With Dispatch Log)", data=pdf_bytes, file_name=f"TRI_Report_{user_pin}.pdf", mime="application/pdf", key=f"dl_pdf_{st.session_state.reset_counter}")
             else:
                 st.error("Error generating PDF.")
         else:
             txt_bytes = final_download_text.encode('utf-8')
-            st.download_button("📥 Download Letter (With Dispatch Log)", data=txt_bytes, file_name=f"TRI_Report_{user_pin}.txt", mime="text/plain")
+            st.download_button("📥 Download Letter (With Dispatch Log)", data=txt_bytes, file_name=f"TRI_Report_{user_pin}.txt", mime="text/plain", key=f"dl_txt_{st.session_state.reset_counter}")
 
     with col_btn2:
         st.caption("By clicking send, you agree to our [Privacy Policy](https://sites.google.com/view/thereminderindia/home).")
         
-        if st.button("📧 Send Official Email Now"):
+        if st.button("📧 Send Official Email Now", key=f"send_email_{st.session_state.reset_counter}"):
             combined_bcc_list = []
             if rec_bcc: combined_bcc_list.append(rec_bcc)
             if user_receipt: combined_bcc_list.append(user_receipt)
@@ -335,7 +360,6 @@ if "letter" in st.session_state:
             elif not rec_to:
                 st.error("❌ Primary Recipient (To) is required.")
             else:
-                # 1. Check size using the Server Vault, NOT the phone's memory
                 vault_files = st.session_state.get("file_vault", [])
                 total_size = sum([len(f["bytes"]) for f in vault_files]) if vault_files else 0
                 
@@ -353,7 +377,6 @@ if "letter" in st.session_state:
                             
                             msg.attach(MIMEText(st.session_state.letter, 'plain'))
                             
-                            # 2. Attach files directly from the Server Vault
                             if vault_files:
                                 for f_data in vault_files:
                                     file_bytes = f_data["bytes"]
@@ -367,7 +390,7 @@ if "letter" in st.session_state:
                                     
                                     if '.' not in clean_filename:
                                         ext = mimetypes.guess_extension(mime_type)
-                                        clean_filename += ext if ext else ".jpg" # Force .jpg if phone completely hides format
+                                        clean_filename += ext if ext else ".jpg" 
                                             
                                     part = MIMEBase(maintype, subtype)
                                     part.set_payload(file_bytes)
@@ -376,14 +399,12 @@ if "letter" in st.session_state:
                                     part.add_header('Content-Disposition', f'attachment; filename="{clean_filename}"')
                                     
                                     msg.attach(part)
-                            # --------------------------------------
                             
                             smtp = smtplib.SMTP_SSL('smtp.gmail.com', 465)
                             smtp.login(SENDER_EMAIL, APP_PASSWORD)
                             smtp.send_message(msg)
                             smtp.quit()
                             
-                            # 💡 ADDITION 3: The Enhanced Success Message
                             st.success("✅ Official Letter Sent! Please check your email (and Spam folder) for your receipt. If the issue is not resolved in 7 days, we encourage you to follow up.")
                             st.balloons()
                         except Exception as e:
@@ -393,7 +414,12 @@ if "letter" in st.session_state:
     st.markdown("---")
     col_spacer, col_clear = st.columns([3, 1])
     with col_clear:
-        # --- THE NUCLEAR CLEAR COMMAND ---
-        if st.button("🔄 Clear Form & Start New"):
-            st.session_state.clear()
+        # --- THE ULTIMATE FORCE RESET ---
+        if st.button("🔄 Clear Form & Start New", key=f"clear_btn_{st.session_state.reset_counter}"):
+            # Wipe everything except the counter
+            keys_to_delete = [k for k in st.session_state.keys() if k != 'reset_counter']
+            for k in keys_to_delete:
+                del st.session_state[k]
+            # Tick the counter up to force Streamlit to destroy and redraw the widgets
+            st.session_state.reset_counter += 1
             st.rerun()
