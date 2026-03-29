@@ -82,7 +82,7 @@ with lang_col:
     target_language = st.selectbox("Select Letter Language:", 
         ["English", "Hindi (हिन्दी)", "Bengali (বাংলা)", "Marathi (मराठी)", 
          "Telugu (తెలుగు)", "Tamil (தமிழ்)", "Gujarati (ગુજરાતી)", 
-         "Urdu (اردו)", "Kannada (କನ್ನಡ)", "Odia (ଓଡ଼ିଆ)", 
+         "Urdu (اردو)", "Kannada (କನ್ನಡ)", "Odia (ଓଡ଼ିଆ)", 
          "Malayalam (മലയാളം)", "Punjabi (ਪੰਜਾਬੀ)", "Assamese (অসমੀয়া)", 
          "Maithili (मैथिली)", "Santali (संताली)", "Kashmiri (کٲशُر)", 
          "Nepali (नेपाली)", "Konkani (कोंकਣੀ)", "Sindhi (سنڌي)", 
@@ -110,9 +110,6 @@ if user_pin and len(user_pin) == 6 and pincode_df is not None:
             search_query = f"official email municipal commissioner {selected_loc['Town']} {selected_loc['District']} site:.gov.in OR site:.nic.in"
             google_url = f"https://www.google.com/search?q={urllib.parse.quote(search_query)}"
             st.sidebar.link_button(f"🌐 Search for {selected_loc['Town']} Email", google_url)
-    else:
-        with details_col:
-            st.error("❌ PIN not found.")
 
 # GPS & File Uploads
 col_gps, col_files = st.columns(2)
@@ -120,12 +117,9 @@ with col_gps:
     if st.button("🛰️ Capture Exact GPS"):
         loc = streamlit_js_eval(data_key='pos', func_name='getCurrentPosition', want_output=True)
         if loc:
-            lat = loc['coords']['latitude']
-            lon = loc['coords']['longitude']
-            # Creating a professional Google Maps Navigation link
-            st.session_state.gps_coord = f"{lat}, {lon}"
+            lat, lon = loc['coords']['latitude'], loc['coords']['longitude']
             st.session_state.maps_link = f"https://www.google.com/maps/dir/?api=1&destination={lat},{lon}&travelmode=driving"
-            st.success(f"✅ GPS Captured! Navigation link ready.")
+            st.success(f"✅ GPS Captured! Navigation Link generated.")
 
 with col_files:
     uploaded_files = st.file_uploader("Attach Evidence (Photos/Videos):", accept_multiple_files=True)
@@ -146,33 +140,54 @@ if st.button("🚀 1. Generate Official Letter"):
         del st.session_state["letter"]
         
     if not user_name or not selected_loc or not issue or len(user_pin) != 6:
-        st.error("⚠️ Please complete all fields.")
+        st.error("⚠️ Please complete all fields correctly.")
     else:
         with st.spinner(f"Drafting formal petition..."):
+            # Prepare conditional text variables outside the prompt
             p_val = user_phone.strip()
             contact_line = f"Contact Number: {p_val}" if p_val else ""
             
-            # LOGIC: Check if GPS exists
             maps_url = st.session_state.get('maps_link', "")
-            gps_line = f"Issue Location (Google Maps Navigation): {maps_url}" if maps_url else "NONE"
+            gps_line = f"The exact location of this issue can be navigated to via Google Maps: {maps_url}" if maps_url else ""
             
-            evidence_count = len(uploaded_files) if uploaded_files else 0
+            evidence_line = "I have attached photographic/video evidence to this email for your reference." if uploaded_files and len(uploaded_files) > 0 else ""
 
             system_prompt = f"""
-            Draft a professional civic complaint in {target_language}.
+            You are a professional assistant drafting a formal civic complaint letter in {target_language}.
+            Write a flowing, natural letter. DO NOT output bullet points like "BODY:" or "SIGN-OFF:".
             
-            STRICT LAYOUT:
-            1. DATE (TOP RIGHT): '{current_date}'
-            2. FROM: Name: {user_name}. {contact_line}
-            3. TO: The Municipal Commissioner, {selected_loc['Town']}, {selected_loc['District']}. PIN: {selected_loc['PIN']}
-            4. BODY: 
-               - State issue: {issue}
-               - GPS RULE: If gps_line is not 'NONE', include this exact line: {gps_line}. If it is 'NONE', do NOT mention GPS, location links, or 'NOT_CAPTURED'.
-               - EVIDENCE: If files > 0, mention that evidence is attached. Otherwise, skip.
-            5. SIGN-OFF: Sincerely, {user_name}. Supported by The Reminder India community.
+            Format the letter exactly like this:
 
-            RULES: RAW TEXT ONLY. NO backticks (```). Omit empty fields.
-            END WITH: 'SUGGESTED_EMAIL: '
+            {current_date}
+
+            From,
+            {user_name}
+            {contact_line}
+
+            To,
+            The Municipal Commissioner,
+            {selected_loc['Town']}, {selected_loc['District']}.
+            PIN: {selected_loc['PIN']}
+
+            Subject: [Generate a clear, concise subject line]
+
+            Dear Sir/Madam,
+
+            [Write 2 to 3 professional paragraphs explaining this issue: "{issue}".]
+            
+            {gps_line}
+            {evidence_line}
+            [Smoothly weave the location and evidence sentences into the text if they are provided above. If they are empty, do not mention them at all.]
+
+            Sincerely,
+            {user_name}
+            Supported by The Reminder India community.
+
+            ---
+            RULES: 
+            - RAW TEXT ONLY. NO markdown formatting like backticks (```) or bolding (**).
+            - Omit any empty fields completely.
+            - END WITH: 'SUGGESTED_EMAIL: ' (Followed by the likely official email, or blank if unknown).
             """
             response = client.chat.completions.create(
                 model="gpt-4o-mini",
