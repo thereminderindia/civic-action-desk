@@ -256,6 +256,8 @@ if "letter" in st.session_state:
             st.download_button("📥 Download Letter (With Dispatch Log)", data=txt_bytes, file_name=f"TRI_Report_{user_pin}.txt", mime="text/plain")
 
     with col_btn2:
+        # Add this tiny disclaimer right above your send button
+        st.caption("By clicking send, you agree to our [Privacy Policy](https://sites.google.com/view/thereminderindia/home?authuser=4).")
         if st.button("📧 Send Official Email Now"):
             combined_bcc_list = []
             if rec_bcc: combined_bcc_list.append(rec_bcc)
