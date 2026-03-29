@@ -73,7 +73,7 @@ with col_title:
     st.title("The Reminder India")
     st.subheader("National Civic Action Desk")
 
-# 4. STEP 1: 22 LANGUAGES & PINCODE
+# 4. STEP 1: LANGUAGE & LOCATION
 st.markdown("---")
 st.subheader("📍 Step 1: Language & Location")
 lang_col, pin_col, details_col = st.columns([2, 2, 4])
@@ -86,10 +86,10 @@ with lang_col:
          "Malayalam (മലയാളം)", "Punjabi (ਪੰਜਾਬੀ)", "Assamese (অসমੀয়া)", 
          "Maithili (मैथिली)", "Santali (संताली)", "Kashmiri (کٲशُر)", 
          "Nepali (नेपाली)", "Konkani (कोंकਣੀ)", "Sindhi (سنڌي)", 
-         "Dogri (ਡੋਗਰੀ)", "Manipuri (ਮৈতৈલોন)", "Bodo (बर')", "Sanskrit (संस्कृतम्)"])
+         "Dogri (डोगरी)", "Manipuri (মৈতৈলোন)", "Bodo (बर')", "Sanskrit (संस्कृतम्)"])
 
 with pin_col:
-    user_pin = st.text_input("Enter 6-Digit PIN:", value="", max_chars=6, key="user_pin_input")
+    user_pin = st.text_input("Enter 6-Digit PIN:", value="", max_chars=6)
     if user_pin and (not user_pin.isdigit() or len(user_pin) != 6):
         st.error("⚠️ Pincode must be exactly 6 digits.")
 
@@ -130,7 +130,7 @@ with col_files:
 st.markdown("---")
 st.subheader("📝 Step 2: Reporter Details")
 user_name = st.text_input("Full Name (Sender):")
-user_phone = st.text_input("Contact Number (Optional):", max_chars=10, key="user_phone_input")
+user_phone = st.text_input("Contact Number (Optional):", max_chars=10)
 if user_phone and (not user_phone.isdigit() or len(user_phone) != 10):
     st.error("⚠️ Phone number must be exactly 10 digits.")
 
@@ -138,35 +138,46 @@ issue = st.text_area("Describe the local problem:")
 
 # 6. STEP 3: GENERATION
 if st.button("🚀 1. Generate Official Letter"):
-    # AUTO-VALIDATION (No "Enter" needed)
-    is_pin_complete = len(user_pin) == 6
-    is_phone_complete = not user_phone or len(user_phone) == 10
-
-    if not is_pin_complete or not is_phone_complete or not user_name or not selected_loc or not issue:
-        st.error("⚠️ Missing or incomplete details (check PIN/Phone digits).")
+    # Clear old letter to force a fresh generation with new inputs
+    if "letter" in st.session_state:
+        del st.session_state["letter"]
+        
+    if not user_name or not selected_loc or not issue or len(user_pin) != 6:
+        st.error("⚠️ Please complete the form correctly.")
     else:
         with st.spinner(f"Drafting formal petition..."):
-            p_val = user_phone.strip()
-            # If phone is there, we pass it. If not, we pass an empty string.
-            phone_inclusion = f"Contact: {p_val}" if p_val else ""
+            phone_val = user_phone.strip()
+            # Construct the exact string to be injected into the prompt
+            contact_line = f"Contact Number: {phone_val}" if phone_val else ""
             gps_val = st.session_state.get('gps_coord', 'NOT_CAPTURED')
             evidence_count = len(uploaded_files) if uploaded_files else 0
 
             system_prompt = f"""
-            Draft a professional civic complaint in {target_language}.
+            Draft a formal civic complaint in {target_language}.
             
-            STRICT RULES FOR SENDER INFO:
-            - If phone number is empty, YOU MUST NOT WRITE the word 'Contact', 'Phone', or any bracketed placeholders like '[Your Phone]'.
-            - If phone is provided, write it on its own line like: {phone_inclusion}
-            
-            LAYOUT:
-            1. DATE (TOP RIGHT): '{current_date}'
-            2. FROM: Name: {user_name} (and phone ONLY if available).
-            3. TO: The Municipal Commissioner, {selected_loc['Town']}, {selected_loc['District']}. PIN: {selected_loc['PIN']}
-            4. BODY: Mention GPS: {gps_val}. Mention evidence ONLY if count is {evidence_count} > 0.
-            5. SIGN-OFF: Sincerely, {user_name}. Supported by TRI.
+            STRICT FROM SECTION RULES:
+            - From,
+            - Name: {user_name}
+            - {contact_line}
+            (IMPORTANT: If contact_line is empty, do not show any 'Contact' or 'Phone' label).
 
-            RULES: RAW TEXT ONLY. NO backticks (```). NO placeholders.
+            STRICT TO SECTION RULES:
+            - To,
+            - The Municipal Commissioner,
+            - {selected_loc['Town']}, {selected_loc['District']}.
+            - PIN: {selected_loc['PIN']}
+
+            BODY RULES:
+            - Mention GPS: {gps_val}.
+            - Mention evidence ONLY if count is {evidence_count} > 0.
+            
+            SIGN-OFF RULES:
+            - Sincerely,
+            - {user_name}
+            - Supported by The Reminder India community.
+
+            DATE: {current_date} (Top Right).
+            RULES: RAW TEXT ONLY. NO backticks (```).
             END WITH: 'SUGGESTED_EMAIL: '
             """
             response = client.chat.completions.create(
@@ -199,9 +210,9 @@ if "letter" in st.session_state:
     with col_btn2:
         if st.button("📧 Send Official Email Now"):
             if not is_valid_email(rec_to) or not is_valid_email(rec_cc) or not is_valid_email(rec_bcc):
-                st.error("❌ Invalid email format detected.")
+                st.error("❌ Invalid email format.")
             elif not rec_to:
-                st.error("❌ Recipient email is required.")
+                st.error("❌ Recipient required.")
             else:
                 with st.spinner("Sending..."):
                     try:
