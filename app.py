@@ -100,7 +100,8 @@ st.subheader("📍 Step 1: Language & Location")
 lang_col, pin_col, details_col = st.columns([2, 2, 4])
 
 with lang_col:
-    target_language = st.selectbox("Select Letter Language:", 
+    # ADDED KEY HERE
+    target_language = st.selectbox("Select Letter Language:", key="lang", options=
         ["English", "Hindi (हिन्दी)", "Bengali (বাংলা)", "Marathi (मराठी)", 
          "Telugu (తెలుగు)", "Tamil (தமிழ்)", "Gujarati (ગુજરાતી)", 
          "Urdu (اردو)", "Kannada (କನ್ನಡ)", "Odia (ଓଡ଼ିଆ)", 
@@ -110,7 +111,8 @@ with lang_col:
          "Dogri (डोगरी)", "Manipuri (মৈতৈলোন)", "Bodo (बर')", "Sanskrit (संस्कृतम्)"])
 
 with pin_col:
-    user_pin = st.text_input("Enter 6-Digit PIN:", value="", max_chars=6)
+    # ADDED KEY HERE
+    user_pin = st.text_input("Enter 6-Digit PIN:", value="", max_chars=6, key="pin")
     if user_pin and (not user_pin.isdigit() or len(user_pin) != 6):
         st.error("⚠️ Pincode must be exactly 6 digits.")
 
@@ -120,7 +122,8 @@ if user_pin and len(user_pin) == 6 and pincode_df is not None:
     if not matches.empty:
         with details_col:
             office_list = matches['officename'].unique().tolist()
-            chosen_office = st.selectbox("Confirm Town/City:", office_list)
+            # ADDED KEY HERE
+            chosen_office = st.selectbox("Confirm Town/City:", office_list, key="office")
             row = matches[matches['officename'] == chosen_office].iloc[0]
             selected_loc = {"Town": row['officename'], "District": row['district'], "State": row['circlename'], "PIN": user_pin}
             st.success(f"✅ Area: {selected_loc['Town']}, {selected_loc['District']}")
@@ -142,38 +145,30 @@ with col_gps:
             st.success(f"✅ GPS Captured! Navigation Link generated.")
 
 with col_files:
-    uploaded_files = st.file_uploader("Attach Evidence (Photos/Videos):", accept_multiple_files=True)
-    # 💡 ADDITION 1: The Perfect Photo Tip
+    # ADDED KEY HERE
+    uploaded_files = st.file_uploader("Attach Evidence (Photos/Videos):", accept_multiple_files=True, key="evidence")
     st.caption("💡 Tip: Try to include a nearby landmark or street sign in your photo so officials can locate the issue faster.")
     
     if uploaded_files:
         st.session_state.file_vault = [] 
         st.markdown("📄 **Attached Previews:**")
         
-        # We bring back the clean 2-column grid so mobile screens don't stretch forever
         preview_cols = st.columns(2)
         
         for i, f in enumerate(uploaded_files):
-            # 1. Grab raw bytes safely
             raw_bytes = f.getvalue() 
-            
-            # 2. Aggressive Mobile Type Guessing
             file_mime = f.type if f.type else ""
             file_name_lower = f.name.lower()
             
-            # If the phone explicitly says it's a video, or the filename ends in a video format
             is_video = 'video' in file_mime or file_name_lower.endswith(('.mp4', '.mov', '.avi', '.webm'))
-            # If it's not a video, we forcefully assume it's an image (since mobile often hides .jpg)
             is_image = not is_video 
 
-            # 3. Lock into the server vault for the email sender
             st.session_state.file_vault.append({
                 "name": f.name,
                 "mime": file_mime if file_mime else 'application/octet-stream',
                 "bytes": raw_bytes
             })
             
-            # 4. Force the preview onto the screen
             with preview_cols[i % 2]:
                 try:
                     if is_video:
@@ -183,29 +178,30 @@ with col_files:
                         st.image(raw_bytes, use_container_width=True)
                         st.caption(f"📸 {f.name}")
                 except Exception:
-                    # Ultimate fallback: If the phone sends a corrupted preview thumbnail, it won't crash the app
                     st.success(f"📎 Safely Attached: {f.name}")
     else:
-        # Clear the vault if the user removes all files
         st.session_state.file_vault = []
 # ---------------------------------------
 
 # 5. STEP 2: REPORTER DETAILS   
 st.markdown("---")
 st.subheader("📝 Step 2: Reporter Details")
-user_name = st.text_input("Full Name (Sender):")
+# ADDED KEY HERE
+user_name = st.text_input("Full Name (Sender):", key="sender_name")
 
-user_phone = st.text_input("Contact Number (Optional):", max_chars=10)
+# ADDED KEY HERE
+user_phone = st.text_input("Contact Number (Optional):", max_chars=10, key="sender_phone")
 if user_phone:
     if not user_phone.isdigit():
         st.error("⚠️ Phone number must contain numbers only.")
     elif len(user_phone) < 10:
         st.warning("⚠️ Please enter the full 10-digit number.")
 
-# 💡 ADDITION 2: Quick Issue Dropdown
-issue_category = st.selectbox("Quick Issue Select (Optional):", 
+# ADDED KEY HERE
+issue_category = st.selectbox("Quick Issue Select (Optional):", key="category", options=
     ["", "Uncollected Garbage", "Broken Road / Pothole", "Clogged Drainage", "Non-functional Streetlight", "Contaminated Water", "Other"])
-issue_details = st.text_area("Describe the local problem (Specific details, location, etc.):")
+# ADDED KEY HERE
+issue_details = st.text_area("Describe the local problem (Specific details, location, etc.):", key="details")
 
 # Combine the category and details seamlessly for the AI
 issue = f"Category: {issue_category}\nDetails: {issue_details}" if issue_category else issue_details
@@ -259,8 +255,6 @@ if st.button("🚀 1. Generate Official Letter"):
             Supported by The Reminder India community.
 
             ---
-            # ... (previous prompt text) ...
-            ---
             RULES: 
             - RAW TEXT ONLY. NO markdown formatting like backticks (```) or bolding (**).
             - Omit any empty fields completely.
@@ -289,15 +283,19 @@ if "letter" in st.session_state:
     st.markdown("##### 📨 Email Routing")
     col_to, col_cc = st.columns(2)
     with col_to:
-        rec_to = st.text_input("To (Primary Official):", value=st.session_state.sug_email)
+        # ADDED KEY HERE
+        rec_to = st.text_input("To (Primary Official):", value=st.session_state.sug_email, key="rec_to")
     with col_cc:
-        rec_cc = st.text_input("CC (Public Copy):", value="")
+        # ADDED KEY HERE
+        rec_cc = st.text_input("CC (Public Copy):", value="", key="rec_cc")
         
     col_bcc, col_me = st.columns(2)
     with col_bcc:
-        rec_bcc = st.text_input("BCC (Secret Archive):", value="")
+        # ADDED KEY HERE
+        rec_bcc = st.text_input("BCC (Secret Archive):", value="", key="rec_bcc")
     with col_me:
-        user_receipt = st.text_input("Your Email (For Receipt Copy):", value="")
+        # ADDED KEY HERE
+        user_receipt = st.text_input("Your Email (For Receipt Copy):", value="", key="user_receipt")
 
     dispatch_log = f"\n\n{'-'*40}\nOFFICIAL DISPATCH RECORD\n{'-'*40}\n"
     dispatch_log += f"Sent To: {rec_to if rec_to else 'Pending'}\n"
@@ -395,7 +393,7 @@ if "letter" in st.session_state:
     st.markdown("---")
     col_spacer, col_clear = st.columns([3, 1])
     with col_clear:
+        # --- THE NUCLEAR CLEAR COMMAND ---
         if st.button("🔄 Clear Form & Start New"):
-            for key in list(st.session_state.keys()):
-                del st.session_state[key]
+            st.session_state.clear()
             st.rerun()
