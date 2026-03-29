@@ -5,7 +5,7 @@ from email.message import EmailMessage
 from fpdf import FPDF
 import pandas as pd
 import re
-import qrcode
+import segno  # New Pure-Python QR Library
 import io
 from datetime import datetime
 from streamlit_gsheets import GSheetsConnection
@@ -31,7 +31,7 @@ def is_valid_email(email_str):
     pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
     return all(re.match(pattern, e) for e in emails if e)
 
-# 2. PDF ENGINE WITH QR CODE SUPPORT
+# 2. PDF ENGINE WITH SEGNO QR SUPPORT
 def create_pdf(text, maps_url=None):
     pdf = FPDF()
     pdf.add_page()
@@ -50,22 +50,18 @@ def create_pdf(text, maps_url=None):
         pdf.set_font("Arial", 'B', 10)
         pdf.cell(0, 10, "SCAN TO NAVIGATE TO LOCATION:", ln=True)
         
-        # Generate QR Code Image in memory
-        qr = qrcode.QRCode(version=1, box_size=10, border=2)
-        qr.add_data(maps_url)
-        qr.make(fit=True)
-        img = qr.make_image(fill_color="black", back_color="white")
+        # Generate QR using Segno (No Pillow needed)
+        qr = segno.make(maps_url)
+        qr_buffer = io.BytesIO()
+        qr.save(qr_buffer, kind='png', scale=5)
+        qr_buffer.seek(0)
         
-        img_buffer = io.BytesIO()
-        img.save(img_buffer, format='PNG')
-        img_buffer.seek(0)
-        
-        # Insert QR into PDF (Bottom Left)
-        pdf.image(img_buffer, x=10, y=pdf.get_y(), w=35)
+        # Insert QR into PDF
+        pdf.image(qr_buffer, x=10, y=pdf.get_y(), w=35)
         
     return pdf.output(dest='S').encode('latin-1', 'ignore')
 
-# 3. INTERFACE & SIDEBAR
+# 3. INTERFACE & SIDEBAR (ALL LINKS PROTECTED)
 st.set_page_config(page_title="The Reminder India", page_icon="🏛️", layout="wide")
 
 st.sidebar.title("📲 Connect with TRI")
@@ -75,6 +71,15 @@ st.sidebar.link_button("📸 Instagram", "https://instagram.com/TheReminderIndia
 st.sidebar.markdown("---")
 st.sidebar.title("🛠️ Tools")
 st.sidebar.link_button("🔍 Pincode Verify", "https://www.indiapost.gov.in/VAS/Pages/findpincode.aspx")
+
+@st.cache_data
+def load_pincode_db():
+    try:
+        df = pd.read_csv("pincodes.csv")
+        df.columns = [c.strip().lower() for c in df.columns]
+        df['pincode'] = df['pincode'].astype(str)
+        return df
+    except: return None
 
 pincode_df = load_pincode_db()
 
@@ -87,7 +92,7 @@ with col_title:
     st.title("The Reminder India")
     st.subheader("National Civic Action Desk")
 
-# 4. STEP 1: LANGUAGE & LOCATION
+# 4. STEP 1: 22 LANGUAGES & PINCODE
 st.markdown("---")
 st.subheader("📍 Step 1: Language & Location")
 lang_col, pin_col, details_col = st.columns([2, 2, 4])
@@ -154,7 +159,7 @@ if st.button("🚀 1. Generate Official Letter"):
         del st.session_state["letter"]
         
     if not user_name or not selected_loc or not issue or len(user_pin) != 6:
-        st.error("⚠️ Please complete all fields.")
+        st.error("⚠️ Please complete all fields correctly.")
     else:
         with st.spinner(f"Drafting formal petition..."):
             p_val = user_phone.strip()
@@ -164,14 +169,14 @@ if st.button("🚀 1. Generate Official Letter"):
             evidence_count = len(uploaded_files) if uploaded_files else 0
 
             system_prompt = f"""
-            Draft a formal civic complaint in {target_language}.
+            Draft a professional civic complaint in {target_language}.
             LAYOUT:
             1. DATE (TOP RIGHT): '{current_date}'
             2. FROM: Name: {user_name}. {contact_line}
             3. TO: The Municipal Commissioner, {selected_loc['Town']}, {selected_loc['District']}. PIN: {selected_loc['PIN']}
             4. BODY: 
                - State issue: {issue}
-               - GPS: If gps_line is not 'NONE', include: {gps_line}. Otherwise, skip GPS mentions.
+               - GPS: If gps_line is not 'NONE', include: {gps_line}. Otherwise, skip.
                - EVIDENCE: If files > 0, mention that evidence is attached.
             5. SIGN-OFF: Sincerely, {user_name}. Supported by TRI.
             RULES: RAW TEXT ONLY. NO backticks (```). Omit empty fields.
@@ -202,7 +207,6 @@ if "letter" in st.session_state:
 
     col_btn1, col_btn2 = st.columns(2)
     with col_btn1:
-        # Pass maps_link to PDF generator for QR code placement
         pdf_bytes = create_pdf(st.session_state.letter, st.session_state.get('maps_link'))
         st.download_button("📥 Download Print PDF with QR", data=pdf_bytes, file_name=f"TRI_Report_{user_pin}.pdf")
     with col_btn2:
