@@ -74,14 +74,19 @@ st.sidebar.link_button("📸 Instagram", "https://instagram.com/TheReminderIndia
 st.sidebar.markdown("---")
 st.sidebar.title("🛠️ Tools")
 st.sidebar.link_button("🔍 Pincode Verify", "https://www.indiapost.gov.in/VAS/Pages/findpincode.aspx")
+st.sidebar.markdown("---")
+st.sidebar.caption("⚖️ Legal & Trust")
+st.sidebar.link_button("📄 Privacy Policy", "https://sites.google.com/view/thereminderindia/home?authuser=4")
 
 pincode_df = load_pincode_db()
 
-# The fixed code using your own file
+# Ensure you have your logo.png in the same folder!
 col_logo, col_title = st.columns([1, 5])
 with col_logo:
-    # Make sure "logo.png" matches the exact name of your file!
-    st.image("logo.jpg", width=90) 
+    try:
+        st.image("logo.jpg", width=90)
+    except:
+        st.title("🏛️")
 with col_title:
     st.title("The Reminder India")
     st.subheader("National Civic Action Desk")
@@ -123,7 +128,7 @@ if user_pin and len(user_pin) == 6 and pincode_df is not None:
             google_url = f"https://www.google.com/search?q={urllib.parse.quote(search_query)}"
             st.sidebar.link_button(f"🌐 Search for {selected_loc['Town']} Email", google_url)
 
-# GPS & File Uploads
+# --- THE BULLETPROOF MOBILE UPLOADER ---
 col_gps, col_files = st.columns(2)
 with col_gps:
     if st.button("🛰️ Capture Exact GPS"):
@@ -134,33 +139,24 @@ with col_gps:
             st.success(f"✅ GPS Captured! Navigation Link generated.")
 
 with col_files:
-    # 1. Define every common image and video format
-    allowed_media = [
-        "png", "jpg", "jpeg", "gif", "bmp", "webp", "heic", "heif", # Image formats
-        "mp4", "mov", "avi", "mkv", "webm", "wmv"                   # Video formats
-    ]
+    # Removed the 'type' restriction to prevent mobile OS blocking
+    uploaded_files = st.file_uploader("Attach Evidence (Photos/Videos):", accept_multiple_files=True)
     
-    # 2. Inject them into the uploader
-    uploaded_files = st.file_uploader(
-        "Attach Evidence (Photos/Videos):", 
-        type=allowed_media, 
-        accept_multiple_files=True
-    )
-    
-    # --- PREVIEW LOGIC REMAINS THE SAME ---
     if uploaded_files:
         st.markdown("📄 **Attached Previews:**")
-        preview_cols = st.columns(2) 
-        
-        for i, f in enumerate(uploaded_files):
-            with preview_cols[i % 2]: 
-                if f.type and f.type.startswith('image'):
-                    st.image(f, use_container_width=True, caption=f.name)
-                elif f.type and f.type.startswith('video'):
-                    st.video(f)
-                    st.caption(f.name)
-                else:
-                    st.info(f"📎 {f.name} attached.")
+        for f in uploaded_files:
+            # We extract the raw bytes immediately so it's safe for both preview and email
+            raw_bytes = f.getvalue() 
+            file_mime = f.type if f.type else "Unknown"
+            
+            st.success(f"📎 Loaded: {f.name}")
+            
+            # Show preview based on what the file actually is
+            if 'image' in file_mime.lower():
+                st.image(raw_bytes, use_container_width=True)
+            elif 'video' in file_mime.lower():
+                st.video(raw_bytes)
+# ---------------------------------------
 
 # 5. STEP 2: REPORTER DETAILS
 st.markdown("---")
@@ -283,8 +279,8 @@ if "letter" in st.session_state:
             st.download_button("📥 Download Letter (With Dispatch Log)", data=txt_bytes, file_name=f"TRI_Report_{user_pin}.txt", mime="text/plain")
 
     with col_btn2:
-        # Add this tiny disclaimer right above your send button
-        st.caption("By clicking send, you agree to our [Privacy Policy](https://sites.google.com/view/thereminderindia/home?authuser=4).")
+        st.caption("By clicking send, you agree to our [Privacy Policy](https://sites.google.com/view/thereminderindia-privacy).")
+        
         if st.button("📧 Send Official Email Now"):
             combined_bcc_list = []
             if rec_bcc: combined_bcc_list.append(rec_bcc)
@@ -300,11 +296,10 @@ if "letter" in st.session_state:
                 if uploaded_files:
                     total_size = sum([f.size for f in uploaded_files])
                 
-                # Lowered the limit slightly to 20MB because email encoding adds 30% extra invisible weight to files!
                 if total_size > 20 * 1024 * 1024:
                     st.error("⚠️ Attachments are too large! Please compress your video or use a photo instead (Max 20MB).")
                 else:
-                    with st.spinner("Sending Email with Attachments..."):
+                    with st.spinner("Preparing secure attachments & sending email..."):
                         try:
                             msg = EmailMessage()
                             msg.set_content(st.session_state.letter)
@@ -314,26 +309,29 @@ if "letter" in st.session_state:
                             if rec_cc: msg['Cc'] = rec_cc
                             if final_bcc_string: msg['Bcc'] = final_bcc_string
                             
-                            # --- NEW BULLETPROOF ATTACHMENT LOGIC ---
+                            # --- MOBILE EMAIL ATTACHMENT LOGIC ---
                             if uploaded_files:
                                 for f in uploaded_files:
-                                    # 1. Safely grab the raw bytes (Streamlit's preferred method)
+                                    # Use the securely grabbed raw bytes
                                     file_data = f.getvalue() 
                                     
-                                    # 2. Grab the exact MIME type directly from the mobile browser (e.g., 'image/jpeg')
-                                    mime_type = f.type 
-                                    
-                                    # 3. Fallback just in case the mobile browser is being stubborn
-                                    if not mime_type or '/' not in mime_type:
+                                    mime_type = f.type if f.type else 'application/octet-stream'
+                                    if '/' not in mime_type:
                                         mime_type = 'application/octet-stream'
                                         
                                     maintype, subtype = mime_type.split('/', 1)
-                                    
-                                    # 4. Clean the filename to prevent mobile path errors
                                     clean_filename = f.name.split("/")[-1].split("\\")[-1]
                                     
+                                    # Force an extension if missing
+                                    if '.' not in clean_filename:
+                                        ext = mimetypes.guess_extension(mime_type)
+                                        if ext:
+                                            clean_filename += ext
+                                        else:
+                                            clean_filename += ".bin"
+                                            
                                     msg.add_attachment(file_data, maintype=maintype, subtype=subtype, filename=clean_filename)
-                            # ----------------------------------------
+                            # --------------------------------------
                             
                             smtp = smtplib.SMTP_SSL('smtp.gmail.com', 465)
                             smtp.login(SENDER_EMAIL, APP_PASSWORD)
@@ -345,7 +343,6 @@ if "letter" in st.session_state:
                         except Exception as e:
                             st.error(f"Error sending email: {e}")
 
-    # --- THE NEW CLEAR FORM BUTTON ---
     st.markdown("<br><br>", unsafe_allow_html=True)
     st.markdown("---")
     col_spacer, col_clear = st.columns([3, 1])
