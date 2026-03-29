@@ -271,10 +271,11 @@ if "letter" in st.session_state:
                 if uploaded_files:
                     total_size = sum([f.size for f in uploaded_files])
                 
-                if total_size > 25 * 1024 * 1024:
-                    st.error("⚠️ Attachments are too large! Gmail limits emails to 25MB total. Please compress your video or use a photo instead.")
+                # Lowered the limit slightly to 20MB because email encoding adds 30% extra invisible weight to files!
+                if total_size > 20 * 1024 * 1024:
+                    st.error("⚠️ Attachments are too large! Please compress your video or use a photo instead (Max 20MB).")
                 else:
-                    with st.spinner("Sending..."):
+                    with st.spinner("Sending Email with Attachments..."):
                         try:
                             msg = EmailMessage()
                             msg.set_content(st.session_state.letter)
@@ -284,16 +285,26 @@ if "letter" in st.session_state:
                             if rec_cc: msg['Cc'] = rec_cc
                             if final_bcc_string: msg['Bcc'] = final_bcc_string
                             
+                            # --- NEW BULLETPROOF ATTACHMENT LOGIC ---
                             if uploaded_files:
                                 for f in uploaded_files:
-                                    f.seek(0)
-                                    file_data = f.read()
-                                    file_name = f.name
-                                    mime_type, _ = mimetypes.guess_type(file_name)
-                                    if mime_type is None:
+                                    # 1. Safely grab the raw bytes (Streamlit's preferred method)
+                                    file_data = f.getvalue() 
+                                    
+                                    # 2. Grab the exact MIME type directly from the mobile browser (e.g., 'image/jpeg')
+                                    mime_type = f.type 
+                                    
+                                    # 3. Fallback just in case the mobile browser is being stubborn
+                                    if not mime_type or '/' not in mime_type:
                                         mime_type = 'application/octet-stream'
+                                        
                                     maintype, subtype = mime_type.split('/', 1)
-                                    msg.add_attachment(file_data, maintype=maintype, subtype=subtype, filename=file_name)
+                                    
+                                    # 4. Clean the filename to prevent mobile path errors
+                                    clean_filename = f.name.split("/")[-1].split("\\")[-1]
+                                    
+                                    msg.add_attachment(file_data, maintype=maintype, subtype=subtype, filename=clean_filename)
+                            # ----------------------------------------
                             
                             smtp = smtplib.SMTP_SSL('smtp.gmail.com', 465)
                             smtp.login(SENDER_EMAIL, APP_PASSWORD)
@@ -303,7 +314,7 @@ if "letter" in st.session_state:
                             st.success("✅ Reported Successfully! Check your email for the receipt.")
                             st.balloons()
                         except Exception as e:
-                            st.error(f"Error: {e}")
+                            st.error(f"Error sending email: {e}")
 
     # --- THE NEW CLEAR FORM BUTTON ---
     st.markdown("<br><br>", unsafe_allow_html=True)
