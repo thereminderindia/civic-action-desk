@@ -79,11 +79,11 @@ st.sidebar.title("🛠️ Tools")
 st.sidebar.link_button("🔍 Pincode Verify", "https://www.indiapost.gov.in/VAS/Pages/findpincode.aspx")
 st.sidebar.markdown("---")
 st.sidebar.caption("⚖️ Legal & Trust")
-st.sidebar.link_button("📄 Privacy Policy", "https://sites.google.com/view/thereminderindia/home?authuser=4")
+st.sidebar.link_button("📄 Privacy Policy", "https://sites.google.com/view/thereminderindia/home")
 
 pincode_df = load_pincode_db()
 
-# Ensure you have your logo.png in the same folder!
+# Ensure you have your logo.jpg in the same folder!
 col_logo, col_title = st.columns([1, 5])
 with col_logo:
     try:
@@ -144,32 +144,47 @@ with col_gps:
 with col_files:
     uploaded_files = st.file_uploader("Attach Evidence (Photos/Videos):", accept_multiple_files=True)
     
-    # --- THE NEW SERVER VAULT LOGIC ---
     if uploaded_files:
-        st.session_state.file_vault = [] # Create the vault
+        st.session_state.file_vault = [] 
         st.markdown("📄 **Attached Previews:**")
         
-        for f in uploaded_files:
-            # 1. Immediately grab the raw bytes
+        # We bring back the clean 2-column grid so mobile screens don't stretch forever
+        preview_cols = st.columns(2)
+        
+        for i, f in enumerate(uploaded_files):
+            # 1. Grab raw bytes safely
             raw_bytes = f.getvalue() 
-            file_mime = f.type if f.type else "application/octet-stream"
             
-            # 2. Lock it into the server vault instantly
+            # 2. Aggressive Mobile Type Guessing
+            file_mime = f.type if f.type else ""
+            file_name_lower = f.name.lower()
+            
+            # If the phone explicitly says it's a video, or the filename ends in a video format
+            is_video = 'video' in file_mime or file_name_lower.endswith(('.mp4', '.mov', '.avi', '.webm'))
+            # If it's not a video, we forcefully assume it's an image (since mobile often hides .jpg)
+            is_image = not is_video 
+
+            # 3. Lock into the server vault for the email sender
             st.session_state.file_vault.append({
                 "name": f.name,
-                "mime": file_mime,
+                "mime": file_mime if file_mime else 'application/octet-stream',
                 "bytes": raw_bytes
             })
             
-            st.success(f"📎 Safely Locked: {f.name}")
-            
-            # 3. Show the preview
-            if 'image' in file_mime.lower():
-                st.image(raw_bytes, use_container_width=True)
-            elif 'video' in file_mime.lower():
-                st.video(raw_bytes)
+            # 4. Force the preview onto the screen
+            with preview_cols[i % 2]:
+                try:
+                    if is_video:
+                        st.video(raw_bytes)
+                        st.caption(f"🎥 {f.name}")
+                    else:
+                        st.image(raw_bytes, use_container_width=True)
+                        st.caption(f"📸 {f.name}")
+                except Exception:
+                    # Ultimate fallback: If the phone sends a corrupted preview thumbnail, it won't crash the app
+                    st.success(f"📎 Safely Attached: {f.name}")
     else:
-        # Clear the vault if the user clicks 'X' to remove a photo
+        # Clear the vault if the user removes all files
         st.session_state.file_vault = []
 # ---------------------------------------
 
@@ -294,9 +309,10 @@ if "letter" in st.session_state:
             st.download_button("📥 Download Letter (With Dispatch Log)", data=txt_bytes, file_name=f"TRI_Report_{user_pin}.txt", mime="text/plain")
 
     with col_btn2:
-        st.caption("By clicking send, you agree to our [Privacy Policy](https://sites.google.com/view/thereminderindia-privacy).")
+        st.caption("By clicking send, you agree to our [Privacy Policy](https://sites.google.com/view/thereminderindia/home).")
         
         if st.button("📧 Send Official Email Now"):
+            # ... rest of the code
             combined_bcc_list = []
             if rec_bcc: combined_bcc_list.append(rec_bcc)
             if user_receipt: combined_bcc_list.append(user_receipt)
