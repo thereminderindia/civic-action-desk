@@ -142,26 +142,38 @@ with col_gps:
             st.success(f"✅ GPS Captured! Navigation Link generated.")
 
 with col_files:
-    # Removed the 'type' restriction to prevent mobile OS blocking
     uploaded_files = st.file_uploader("Attach Evidence (Photos/Videos):", accept_multiple_files=True)
     
+    # --- THE NEW SERVER VAULT LOGIC ---
     if uploaded_files:
+        st.session_state.file_vault = [] # Create the vault
         st.markdown("📄 **Attached Previews:**")
+        
         for f in uploaded_files:
-            # We extract the raw bytes immediately so it's safe for both preview and email
+            # 1. Immediately grab the raw bytes
             raw_bytes = f.getvalue() 
-            file_mime = f.type if f.type else "Unknown"
+            file_mime = f.type if f.type else "application/octet-stream"
             
-            st.success(f"📎 Loaded: {f.name}")
+            # 2. Lock it into the server vault instantly
+            st.session_state.file_vault.append({
+                "name": f.name,
+                "mime": file_mime,
+                "bytes": raw_bytes
+            })
             
-            # Show preview based on what the file actually is
+            st.success(f"📎 Safely Locked: {f.name}")
+            
+            # 3. Show the preview
             if 'image' in file_mime.lower():
                 st.image(raw_bytes, use_container_width=True)
             elif 'video' in file_mime.lower():
                 st.video(raw_bytes)
+    else:
+        # Clear the vault if the user clicks 'X' to remove a photo
+        st.session_state.file_vault = []
 # ---------------------------------------
 
-# 5. STEP 2: REPORTER DETAILS
+# 5. STEP 2: REPORTER DETAILS   
 st.markdown("---")
 st.subheader("📝 Step 2: Reporter Details")
 user_name = st.text_input("Full Name (Sender):")
@@ -291,20 +303,19 @@ if "letter" in st.session_state:
             final_bcc_string = ", ".join(combined_bcc_list)
 
             if not is_valid_email(rec_to) or not is_valid_email(rec_cc) or not is_valid_email(final_bcc_string):
-                st.error("❌ Invalid email format detected in one of the fields.")
+                st.error("❌ Invalid email format detected.")
             elif not rec_to:
                 st.error("❌ Primary Recipient (To) is required.")
             else:
-                total_size = 0
-                if uploaded_files:
-                    total_size = sum([f.size for f in uploaded_files])
+                # 1. Check size using the Server Vault, NOT the phone's memory
+                vault_files = st.session_state.get("file_vault", [])
+                total_size = sum([len(f["bytes"]) for f in vault_files]) if vault_files else 0
                 
                 if total_size > 20 * 1024 * 1024:
                     st.error("⚠️ Attachments are too large! Please compress your video or use a photo instead (Max 20MB).")
                 else:
                     with st.spinner("Preparing secure attachments & sending email..."):
                         try:
-                            # --- THE NEW MULTIPART EMAIL LOGIC ---
                             msg = MIMEMultipart()
                             msg['Subject'] = f"CIVIC COMPLAINT: {selected_loc['Town']} - {user_name}"
                             msg['From'] = SENDER_EMAIL
@@ -312,32 +323,27 @@ if "letter" in st.session_state:
                             if rec_cc: msg['Cc'] = rec_cc
                             if final_bcc_string: msg['Bcc'] = final_bcc_string
                             
-                            # 1. Attach the Text Body
                             msg.attach(MIMEText(st.session_state.letter, 'plain'))
                             
-                            # 2. Attach the Files explicitly to force the Paperclip Icon
-                            if uploaded_files:
-                                for f in uploaded_files:
-                                    file_data = f.getvalue() 
-                                    mime_type = f.type if f.type else 'application/octet-stream'
+                            # 2. Attach files directly from the Server Vault
+                            if vault_files:
+                                for f_data in vault_files:
+                                    file_bytes = f_data["bytes"]
+                                    mime_type = f_data["mime"]
+                                    
                                     if '/' not in mime_type:
                                         mime_type = 'application/octet-stream'
                                         
                                     maintype, subtype = mime_type.split('/', 1)
-                                    clean_filename = f.name.split("/")[-1].split("\\")[-1]
+                                    clean_filename = f_data["name"].split("/")[-1].split("\\")[-1]
                                     
                                     if '.' not in clean_filename:
                                         ext = mimetypes.guess_extension(mime_type)
-                                        if ext:
-                                            clean_filename += ext
-                                        else:
-                                            clean_filename += ".bin"
+                                        clean_filename += ext if ext else ".jpg" # Force .jpg if phone completely hides format
                                             
-                                    # Create the physical attachment package
                                     part = MIMEBase(maintype, subtype)
-                                    part.set_payload(file_data)
+                                    part.set_payload(file_bytes)
                                     
-                                    # THIS is the magic line that guarantees Gmail shows the attachment cards
                                     encoders.encode_base64(part) 
                                     part.add_header('Content-Disposition', f'attachment; filename="{clean_filename}"')
                                     
