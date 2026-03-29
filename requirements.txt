@@ -1,5 +1,7 @@
+streamlit
 openai
-fpdf
 pandas
-st-gsheets-connection
-streamlit-js-eval
+fpdf
+qrcode[pil]
+streamlit-gsheets
+streamlit-js_eval

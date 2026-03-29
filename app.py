@@ -5,6 +5,8 @@ from email.message import EmailMessage
 from fpdf import FPDF
 import pandas as pd
 import re
+import qrcode
+import io
 from datetime import datetime
 from streamlit_gsheets import GSheetsConnection
 from streamlit_js_eval import streamlit_js_eval
@@ -29,26 +31,38 @@ def is_valid_email(email_str):
     pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
     return all(re.match(pattern, e) for e in emails if e)
 
-# 2. LOCAL CSV ENGINE
-@st.cache_data
-def load_pincode_db():
-    try:
-        df = pd.read_csv("pincodes.csv")
-        df.columns = [c.strip().lower() for c in df.columns]
-        df['pincode'] = df['pincode'].astype(str)
-        return df
-    except:
-        return None
-
-def create_pdf(text):
+# 2. PDF ENGINE WITH QR CODE SUPPORT
+def create_pdf(text, maps_url=None):
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", size=11)
+    
+    # Render Text
     for line in text.split('\n'):
         if current_date in line:
             pdf.cell(0, 10, txt=line, ln=True, align='R')
         else:
             pdf.multi_cell(0, 10, txt=line, align='L')
+    
+    # Add QR Code if GPS exists
+    if maps_url:
+        pdf.ln(10)
+        pdf.set_font("Arial", 'B', 10)
+        pdf.cell(0, 10, "SCAN TO NAVIGATE TO LOCATION:", ln=True)
+        
+        # Generate QR Code Image in memory
+        qr = qrcode.QRCode(version=1, box_size=10, border=2)
+        qr.add_data(maps_url)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color="black", back_color="white")
+        
+        img_buffer = io.BytesIO()
+        img.save(img_buffer, format='PNG')
+        img_buffer.seek(0)
+        
+        # Insert QR into PDF (Bottom Left)
+        pdf.image(img_buffer, x=10, y=pdf.get_y(), w=35)
+        
     return pdf.output(dest='S').encode('latin-1', 'ignore')
 
 # 3. INTERFACE & SIDEBAR
@@ -110,9 +124,6 @@ if user_pin and len(user_pin) == 6 and pincode_df is not None:
             search_query = f"official email municipal commissioner {selected_loc['Town']} {selected_loc['District']} site:.gov.in OR site:.nic.in"
             google_url = f"https://www.google.com/search?q={urllib.parse.quote(search_query)}"
             st.sidebar.link_button(f"🌐 Search for {selected_loc['Town']} Email", google_url)
-    else:
-        with details_col:
-            st.error("❌ PIN not found.")
 
 # GPS & File Uploads
 col_gps, col_files = st.columns(2)
@@ -120,8 +131,9 @@ with col_gps:
     if st.button("🛰️ Capture Exact GPS"):
         loc = streamlit_js_eval(data_key='pos', func_name='getCurrentPosition', want_output=True)
         if loc:
-            st.session_state.gps_coord = f"Lat: {loc['coords']['latitude']}, Lon: {loc['coords']['longitude']}"
-            st.success(f"Captured: {st.session_state.gps_coord}")
+            lat, lon = loc['coords']['latitude'], loc['coords']['longitude']
+            st.session_state.maps_link = f"https://www.google.com/maps/dir/?api=1&destination={lat},{lon}&travelmode=driving"
+            st.success(f"✅ GPS Captured! Navigation Link and QR Code generated.")
 
 with col_files:
     uploaded_files = st.file_uploader("Attach Evidence (Photos/Videos):", accept_multiple_files=True)
@@ -138,46 +150,31 @@ issue = st.text_area("Describe the local problem:")
 
 # 6. STEP 3: GENERATION
 if st.button("🚀 1. Generate Official Letter"):
-    # Clear old letter to force a fresh generation with new inputs
     if "letter" in st.session_state:
         del st.session_state["letter"]
         
     if not user_name or not selected_loc or not issue or len(user_pin) != 6:
-        st.error("⚠️ Please complete the form correctly.")
+        st.error("⚠️ Please complete all fields.")
     else:
         with st.spinner(f"Drafting formal petition..."):
-            phone_val = user_phone.strip()
-            # Construct the exact string to be injected into the prompt
-            contact_line = f"Contact Number: {phone_val}" if phone_val else ""
-            gps_val = st.session_state.get('gps_coord', 'NOT_CAPTURED')
+            p_val = user_phone.strip()
+            contact_line = f"Contact Number: {p_val}" if p_val else ""
+            maps_url = st.session_state.get('maps_link', "")
+            gps_line = f"Issue Location (Google Maps Navigation): {maps_url}" if maps_url else "NONE"
             evidence_count = len(uploaded_files) if uploaded_files else 0
 
             system_prompt = f"""
             Draft a formal civic complaint in {target_language}.
-            
-            STRICT FROM SECTION RULES:
-            - From,
-            - Name: {user_name}
-            - {contact_line}
-            (IMPORTANT: If contact_line is empty, do not show any 'Contact' or 'Phone' label).
-
-            STRICT TO SECTION RULES:
-            - To,
-            - The Municipal Commissioner,
-            - {selected_loc['Town']}, {selected_loc['District']}.
-            - PIN: {selected_loc['PIN']}
-
-            BODY RULES:
-            - Mention GPS: {gps_val}.
-            - Mention evidence ONLY if count is {evidence_count} > 0.
-            
-            SIGN-OFF RULES:
-            - Sincerely,
-            - {user_name}
-            - Supported by The Reminder India community.
-
-            DATE: {current_date} (Top Right).
-            RULES: RAW TEXT ONLY. NO backticks (```).
+            LAYOUT:
+            1. DATE (TOP RIGHT): '{current_date}'
+            2. FROM: Name: {user_name}. {contact_line}
+            3. TO: The Municipal Commissioner, {selected_loc['Town']}, {selected_loc['District']}. PIN: {selected_loc['PIN']}
+            4. BODY: 
+               - State issue: {issue}
+               - GPS: If gps_line is not 'NONE', include: {gps_line}. Otherwise, skip GPS mentions.
+               - EVIDENCE: If files > 0, mention that evidence is attached.
+            5. SIGN-OFF: Sincerely, {user_name}. Supported by TRI.
+            RULES: RAW TEXT ONLY. NO backticks (```). Omit empty fields.
             END WITH: 'SUGGESTED_EMAIL: '
             """
             response = client.chat.completions.create(
@@ -205,8 +202,9 @@ if "letter" in st.session_state:
 
     col_btn1, col_btn2 = st.columns(2)
     with col_btn1:
-        pdf_bytes = create_pdf(st.session_state.letter)
-        st.download_button("📥 Download Print PDF", data=pdf_bytes, file_name=f"TRI_Report_{user_pin}.pdf")
+        # Pass maps_link to PDF generator for QR code placement
+        pdf_bytes = create_pdf(st.session_state.letter, st.session_state.get('maps_link'))
+        st.download_button("📥 Download Print PDF with QR", data=pdf_bytes, file_name=f"TRI_Report_{user_pin}.pdf")
     with col_btn2:
         if st.button("📧 Send Official Email Now"):
             if not is_valid_email(rec_to) or not is_valid_email(rec_cc) or not is_valid_email(rec_bcc):
