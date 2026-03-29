@@ -81,37 +81,38 @@ lang_col, pin_col, details_col = st.columns([2, 2, 4])
 with lang_col:
     target_language = st.selectbox("Select Letter Language:", 
         ["English", "Hindi (हिन्दी)", "Bengali (বাংলা)", "Marathi (मराठी)", 
-         "Telugu (తెలుగు)", "Tamil (தமிழ்)", "Gujarati (ગુજરાਤੀ)", 
+         "Telugu (తెలుగు)", "Tamil (தமிழ்)", "Gujarati (ગુજરાતી)", 
          "Urdu (اردو)", "Kannada (କನ್ನಡ)", "Odia (ଓଡ଼ିଆ)", 
          "Malayalam (മലയാളം)", "Punjabi (ਪੰਜਾਬੀ)", "Assamese (অসমੀয়া)", 
          "Maithili (मैथिली)", "Santali (संताली)", "Kashmiri (کٲशُر)", 
          "Nepali (नेपाली)", "Konkani (कोंकਣੀ)", "Sindhi (سنڌي)", 
-         "Dogri (डोगरी)", "Manipuri (মৈতৈলোন)", "Bodo (बर')", "Sanskrit (संस्कृतम्)"])
+         "Dogri (ਡੋਗਰੀ)", "Manipuri (ਮৈতৈલોন)", "Bodo (बर')", "Sanskrit (संस्कृतम्)"])
 
 with pin_col:
-    user_pin = st.text_input("Enter 6-Digit PIN:", value="", max_chars=6)
+    user_pin = st.text_input("Enter 6-Digit PIN:", value="", max_chars=6, key="user_pin_input")
     if user_pin and (not user_pin.isdigit() or len(user_pin) != 6):
         st.error("⚠️ Pincode must be exactly 6 digits.")
 
 selected_loc = None
-with details_col:
-    if user_pin and len(user_pin) == 6 and pincode_df is not None:
-        matches = pincode_df[pincode_df['pincode'] == str(user_pin)]
-        if not matches.empty:
+if user_pin and len(user_pin) == 6 and pincode_df is not None:
+    matches = pincode_df[pincode_df['pincode'] == str(user_pin)]
+    if not matches.empty:
+        with details_col:
             office_list = matches['officename'].unique().tolist()
             chosen_office = st.selectbox("Confirm Town/City:", office_list)
             row = matches[matches['officename'] == chosen_office].iloc[0]
             selected_loc = {"Town": row['officename'], "District": row['district'], "State": row['circlename'], "PIN": user_pin}
             st.success(f"✅ Area: {selected_loc['Town']}, {selected_loc['District']}")
             
-            # --- SIDEBAR SEARCH TOOL ---
+            # SIDEBAR SEARCH TOOL
             st.sidebar.markdown("---")
             st.sidebar.subheader("🔍 Find Official Email")
             search_query = f"official email municipal commissioner {selected_loc['Town']} {selected_loc['District']} site:.gov.in OR site:.nic.in"
             google_url = f"https://www.google.com/search?q={urllib.parse.quote(search_query)}"
             st.sidebar.link_button(f"🌐 Search for {selected_loc['Town']} Email", google_url)
-        else:
-            st.error("❌ PIN not found in database.")
+    else:
+        with details_col:
+            st.error("❌ PIN not found.")
 
 # GPS & File Uploads
 col_gps, col_files = st.columns(2)
@@ -129,7 +130,7 @@ with col_files:
 st.markdown("---")
 st.subheader("📝 Step 2: Reporter Details")
 user_name = st.text_input("Full Name (Sender):")
-user_phone = st.text_input("Contact Number (Optional):", max_chars=10)
+user_phone = st.text_input("Contact Number (Optional):", max_chars=10, key="user_phone_input")
 if user_phone and (not user_phone.isdigit() or len(user_phone) != 10):
     st.error("⚠️ Phone number must be exactly 10 digits.")
 
@@ -137,43 +138,36 @@ issue = st.text_area("Describe the local problem:")
 
 # 6. STEP 3: GENERATION
 if st.button("🚀 1. Generate Official Letter"):
-    is_pin_valid = len(user_pin) == 6
-    is_phone_valid = not user_phone or (user_phone.isdigit() and len(user_phone) == 10)
+    # AUTO-VALIDATION (No "Enter" needed)
+    is_pin_complete = len(user_pin) == 6
+    is_phone_complete = not user_phone or len(user_phone) == 10
 
-    if not is_pin_valid or not is_phone_valid or not user_name or not selected_loc or not issue:
-        st.error("⚠️ Please fix the errors in PIN, Phone, or Name before generating.")
+    if not is_pin_complete or not is_phone_complete or not user_name or not selected_loc or not issue:
+        st.error("⚠️ Missing or incomplete details (check PIN/Phone digits).")
     else:
         with st.spinner(f"Drafting formal petition..."):
-            # Hard-coded string construction to force visibility
-            phone_val = user_phone.strip()
-            contact_line = f"Contact: {phone_val}" if phone_val else "NO_PHONE"
+            p_val = user_phone.strip()
+            # If phone is there, we pass it. If not, we pass an empty string.
+            phone_inclusion = f"Contact: {p_val}" if p_val else ""
             gps_val = st.session_state.get('gps_coord', 'NOT_CAPTURED')
             evidence_count = len(uploaded_files) if uploaded_files else 0
 
             system_prompt = f"""
             Draft a professional civic complaint in {target_language}.
             
-            STRICT LAYOUT RULES:
+            STRICT RULES FOR SENDER INFO:
+            - If phone number is empty, YOU MUST NOT WRITE the word 'Contact', 'Phone', or any bracketed placeholders like '[Your Phone]'.
+            - If phone is provided, write it on its own line like: {phone_inclusion}
+            
+            LAYOUT:
             1. DATE (TOP RIGHT): '{current_date}'
-            2. FROM SECTION: 
-               From,
-               Name: {user_name}
-               {f'Contact: {phone_val}' if phone_val else ''}
-            3. TO SECTION: 
-               To,
-               The Municipal Commissioner,
-               {selected_loc['Town']}, {selected_loc['District']}.
-               PIN: {selected_loc['PIN']}
-            4. BODY: 
-               - State issue: {issue}
-               - Mention GPS: {gps_val} (If NOT_CAPTURED, ask for ground verification).
-               - Mention evidence ONLY if evidence count is {evidence_count} > 0.
-            5. SIGN-OFF: Sincerely, {user_name}. Supported by The Reminder India community.
+            2. FROM: Name: {user_name} (and phone ONLY if available).
+            3. TO: The Municipal Commissioner, {selected_loc['Town']}, {selected_loc['District']}. PIN: {selected_loc['PIN']}
+            4. BODY: Mention GPS: {gps_val}. Mention evidence ONLY if count is {evidence_count} > 0.
+            5. SIGN-OFF: Sincerely, {user_name}. Supported by TRI.
 
-            RULES:
-            - If phone is provided, you MUST include it in the 'From' section.
-            - RAW TEXT ONLY. NO backticks (```).
-            - END WITH: 'SUGGESTED_EMAIL: ' (Give the most likely .gov.in or .nic.in email).
+            RULES: RAW TEXT ONLY. NO backticks (```). NO placeholders.
+            END WITH: 'SUGGESTED_EMAIL: '
             """
             response = client.chat.completions.create(
                 model="gpt-4o-mini",
@@ -204,9 +198,8 @@ if "letter" in st.session_state:
         st.download_button("📥 Download Print PDF", data=pdf_bytes, file_name=f"TRI_Report_{user_pin}.pdf")
     with col_btn2:
         if st.button("📧 Send Official Email Now"):
-            # Validation
             if not is_valid_email(rec_to) or not is_valid_email(rec_cc) or not is_valid_email(rec_bcc):
-                st.error("❌ One or more email addresses are invalid. Please check the format.")
+                st.error("❌ Invalid email format detected.")
             elif not rec_to:
                 st.error("❌ Recipient email is required.")
             else:
@@ -226,7 +219,7 @@ if "letter" in st.session_state:
                         smtp.login(SENDER_EMAIL, APP_PASSWORD)
                         smtp.send_message(msg)
                         smtp.quit()
-                        st.success("✅ Sent Successfully!")
+                        st.success("✅ Reported Successfully!")
                         st.balloons()
                     except Exception as e:
                         st.error(f"Error: {e}")
