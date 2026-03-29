@@ -77,10 +77,11 @@ st.sidebar.link_button("🔍 Pincode Verify", "https://www.indiapost.gov.in/VAS/
 
 pincode_df = load_pincode_db()
 
-logo_url = "https://www.facebook.com/photo/?fbid=122097222099239425&set=pb.61587182761969.-2207520000" 
+# The fixed code using your own file
 col_logo, col_title = st.columns([1, 5])
 with col_logo:
-    st.image(logo_url, width=90)
+    # Make sure "logo.png" matches the exact name of your file!
+    st.image("logo.png", width=90) 
 with col_title:
     st.title("The Reminder India")
     st.subheader("National Civic Action Desk")
