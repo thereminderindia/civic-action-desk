@@ -4,8 +4,4 @@ pandas
 fpdf
 qrcode[pil]
 streamlit-gsheets
-<<<<<<< HEAD
 streamlit-js_eval
-=======
-streamlit-js_eval
->>>>>>> cdbc1322667b594cd25f4f25a9a1f996e730958f
