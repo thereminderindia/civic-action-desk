@@ -54,6 +54,15 @@ def create_pdf(text):
 # 3. INTERFACE & SIDEBAR
 st.set_page_config(page_title="The Reminder India", page_icon="🏛️", layout="wide")
 
+# --- CUSTOM CSS TO HIDE STREAMLIT'S "PRESS ENTER" TEXT ---
+st.markdown("""
+    <style>
+        div[data-testid="InputInstructions"] {
+            display: none !important;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
 st.sidebar.title("📲 Connect with TRI")
 st.sidebar.link_button("📺 YouTube", "https://youtube.com/@TheReminderIndia")
 st.sidebar.link_button("🔵 Facebook", "https://facebook.com/TheReminderIndia")
@@ -128,9 +137,15 @@ with col_files:
 st.markdown("---")
 st.subheader("📝 Step 2: Reporter Details")
 user_name = st.text_input("Full Name (Sender):")
+
+# --- SMART PHONE VALIDATION ---
 user_phone = st.text_input("Contact Number (Optional):", max_chars=10)
-if user_phone and (not user_phone.isdigit() or len(user_phone) != 10):
-    st.error("⚠️ Phone number must be exactly 10 digits.")
+if user_phone:
+    if not user_phone.isdigit():
+        st.error("⚠️ Phone number must contain numbers only.")
+    elif len(user_phone) < 10:
+        st.warning("⚠️ Please enter the full 10-digit number.")
+    # If it is exactly 10 digits and numbers, it goes completely silent (valid).
 
 issue = st.text_area("Describe the local problem:")
 
@@ -143,7 +158,6 @@ if st.button("🚀 1. Generate Official Letter"):
         st.error("⚠️ Please complete all fields correctly.")
     else:
         with st.spinner(f"Drafting formal petition..."):
-            # Prepare conditional text variables outside the prompt
             p_val = user_phone.strip()
             contact_line = f"Contact Number: {p_val}" if p_val else ""
             
