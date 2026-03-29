@@ -81,7 +81,7 @@ pincode_df = load_pincode_db()
 col_logo, col_title = st.columns([1, 5])
 with col_logo:
     # Make sure "logo.png" matches the exact name of your file!
-    st.image("logo.png", width=90) 
+    st.image("logo.jpg", width=90) 
 with col_title:
     st.title("The Reminder India")
     st.subheader("National Civic Action Desk")
