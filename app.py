@@ -5,6 +5,7 @@ from email.message import EmailMessage
 from fpdf import FPDF
 import pandas as pd
 import re
+import mimetypes
 from datetime import datetime
 from streamlit_gsheets import GSheetsConnection
 from streamlit_js_eval import streamlit_js_eval
@@ -40,7 +41,7 @@ def load_pincode_db():
     except:
         return None
 
-# PDF ENGINE (Protected against crashes)
+# PDF ENGINE
 def create_pdf(text):
     try:
         pdf = FPDF()
@@ -58,7 +59,6 @@ def create_pdf(text):
 # 3. INTERFACE & SIDEBAR
 st.set_page_config(page_title="The Reminder India", page_icon="🏛️", layout="wide")
 
-# CSS TO HIDE STREAMLIT'S "PRESS ENTER" TEXT
 st.markdown("""
     <style>
         div[data-testid="InputInstructions"] {
@@ -77,7 +77,6 @@ st.sidebar.link_button("🔍 Pincode Verify", "https://www.indiapost.gov.in/VAS/
 
 pincode_df = load_pincode_db()
 
-# Branding
 logo_url = "https://www.facebook.com/photo/?fbid=122097222099239425&set=pb.61587182761969.-2207520000" 
 col_logo, col_title = st.columns([1, 5])
 with col_logo:
@@ -117,7 +116,6 @@ if user_pin and len(user_pin) == 6 and pincode_df is not None:
             selected_loc = {"Town": row['officename'], "District": row['district'], "State": row['circlename'], "PIN": user_pin}
             st.success(f"✅ Area: {selected_loc['Town']}, {selected_loc['District']}")
             
-            # SIDEBAR SEARCH TOOL
             st.sidebar.markdown("---")
             st.sidebar.subheader("🔍 Find Official Email")
             search_query = f"official email municipal commissioner {selected_loc['Town']} {selected_loc['District']} site:.gov.in OR site:.nic.in"
@@ -142,7 +140,6 @@ st.markdown("---")
 st.subheader("📝 Step 2: Reporter Details")
 user_name = st.text_input("Full Name (Sender):")
 
-# SMART PHONE VALIDATION
 user_phone = st.text_input("Contact Number (Optional):", max_chars=10)
 if user_phone:
     if not user_phone.isdigit():
@@ -219,56 +216,101 @@ if st.button("🚀 1. Generate Official Letter"):
 if "letter" in st.session_state:
     st.divider()
     st.subheader("📬 Step 4: Final Review & Email Controls")
-    st.text_area("Letter Content:", value=st.session_state.letter, height=500)
+    st.text_area("Letter Content:", value=st.session_state.letter, height=400)
     
-    col_to, col_cc, col_bcc = st.columns(3)
+    st.markdown("##### 📨 Email Routing")
+    col_to, col_cc = st.columns(2)
     with col_to:
         rec_to = st.text_input("To (Primary Official):", value=st.session_state.sug_email)
     with col_cc:
         rec_cc = st.text_input("CC (Public Copy):", value="")
+        
+    col_bcc, col_me = st.columns(2)
     with col_bcc:
         rec_bcc = st.text_input("BCC (Secret Archive):", value="")
+    with col_me:
+        user_receipt = st.text_input("Your Email (For Receipt Copy):", value="")
 
+    dispatch_log = f"\n\n{'-'*40}\nOFFICIAL DISPATCH RECORD\n{'-'*40}\n"
+    dispatch_log += f"Sent To: {rec_to if rec_to else 'Pending'}\n"
+    dispatch_log += f"CC: {rec_cc if rec_cc else 'None'}\n"
+    dispatch_log += f"BCC: {rec_bcc if rec_bcc else 'None'}\n"
+    if user_receipt:
+        dispatch_log += f"Receipt Sent To: {user_receipt}\n"
+    dispatch_log += f"{'-'*40}"
+    
+    final_download_text = st.session_state.letter + dispatch_log
+
+    st.markdown("<br>", unsafe_allow_html=True)
     col_btn1, col_btn2 = st.columns(2)
     
-    # --- THE MULTI-LINGUAL DOWNLOAD FIX ---
     with col_btn1:
         if target_language == "English":
-            pdf_bytes = create_pdf(st.session_state.letter)
+            pdf_bytes = create_pdf(final_download_text)
             if pdf_bytes:
-                st.download_button("📥 Download Print PDF", data=pdf_bytes, file_name=f"TRI_Report_{user_pin}.pdf", mime="application/pdf")
+                st.download_button("📥 Download Print PDF (With Dispatch Log)", data=pdf_bytes, file_name=f"TRI_Report_{user_pin}.pdf", mime="application/pdf")
             else:
                 st.error("Error generating PDF.")
         else:
-            # Regional languages safely save as a UTF-8 text file to prevent character crashing
-            txt_bytes = st.session_state.letter.encode('utf-8')
-            st.download_button("📥 Download Letter (Text File)", data=txt_bytes, file_name=f"TRI_Report_{user_pin}.txt", mime="text/plain")
-            st.caption("📝 Saved as a Text File to support Indian script characters.")
+            txt_bytes = final_download_text.encode('utf-8')
+            st.download_button("📥 Download Letter (With Dispatch Log)", data=txt_bytes, file_name=f"TRI_Report_{user_pin}.txt", mime="text/plain")
 
     with col_btn2:
         if st.button("📧 Send Official Email Now"):
-            if not is_valid_email(rec_to) or not is_valid_email(rec_cc) or not is_valid_email(rec_bcc):
-                st.error("❌ Invalid email format.")
+            combined_bcc_list = []
+            if rec_bcc: combined_bcc_list.append(rec_bcc)
+            if user_receipt: combined_bcc_list.append(user_receipt)
+            final_bcc_string = ", ".join(combined_bcc_list)
+
+            if not is_valid_email(rec_to) or not is_valid_email(rec_cc) or not is_valid_email(final_bcc_string):
+                st.error("❌ Invalid email format detected in one of the fields.")
             elif not rec_to:
-                st.error("❌ Recipient required.")
+                st.error("❌ Primary Recipient (To) is required.")
             else:
-                with st.spinner("Sending..."):
-                    try:
-                        msg = EmailMessage()
-                        msg.set_content(st.session_state.letter)
-                        msg['Subject'] = f"CIVIC COMPLAINT: {selected_loc['Town']} - {user_name}"
-                        msg['From'] = SENDER_EMAIL
-                        msg['To'] = rec_to
-                        if rec_cc: msg['Cc'] = rec_cc
-                        if rec_bcc: msg['Bcc'] = rec_bcc
-                        if uploaded_files:
-                            for f in uploaded_files:
-                                msg.add_attachment(f.read(), maintype='application', subtype='octet-stream', filename=f.name)
-                        smtp = smtplib.SMTP_SSL('smtp.gmail.com', 465)
-                        smtp.login(SENDER_EMAIL, APP_PASSWORD)
-                        smtp.send_message(msg)
-                        smtp.quit()
-                        st.success("✅ Reported Successfully!")
-                        st.balloons()
-                    except Exception as e:
-                        st.error(f"Error: {e}")
+                total_size = 0
+                if uploaded_files:
+                    total_size = sum([f.size for f in uploaded_files])
+                
+                if total_size > 25 * 1024 * 1024:
+                    st.error("⚠️ Attachments are too large! Gmail limits emails to 25MB total. Please compress your video or use a photo instead.")
+                else:
+                    with st.spinner("Sending..."):
+                        try:
+                            msg = EmailMessage()
+                            msg.set_content(st.session_state.letter)
+                            msg['Subject'] = f"CIVIC COMPLAINT: {selected_loc['Town']} - {user_name}"
+                            msg['From'] = SENDER_EMAIL
+                            msg['To'] = rec_to
+                            if rec_cc: msg['Cc'] = rec_cc
+                            if final_bcc_string: msg['Bcc'] = final_bcc_string
+                            
+                            if uploaded_files:
+                                for f in uploaded_files:
+                                    f.seek(0)
+                                    file_data = f.read()
+                                    file_name = f.name
+                                    mime_type, _ = mimetypes.guess_type(file_name)
+                                    if mime_type is None:
+                                        mime_type = 'application/octet-stream'
+                                    maintype, subtype = mime_type.split('/', 1)
+                                    msg.add_attachment(file_data, maintype=maintype, subtype=subtype, filename=file_name)
+                            
+                            smtp = smtplib.SMTP_SSL('smtp.gmail.com', 465)
+                            smtp.login(SENDER_EMAIL, APP_PASSWORD)
+                            smtp.send_message(msg)
+                            smtp.quit()
+                            
+                            st.success("✅ Reported Successfully! Check your email for the receipt.")
+                            st.balloons()
+                        except Exception as e:
+                            st.error(f"Error: {e}")
+
+    # --- THE NEW CLEAR FORM BUTTON ---
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    st.markdown("---")
+    col_spacer, col_clear = st.columns([3, 1])
+    with col_clear:
+        if st.button("🔄 Clear Form & Start New"):
+            for key in list(st.session_state.keys()):
+                del st.session_state[key]
+            st.rerun()
