@@ -2,6 +2,7 @@ streamlit
 openai
 pandas
 fpdf
-qrcode[pil]
+qrcode
+Pillow
 streamlit-gsheets
-streamlit-js_eval
+streamlit-js-eval
