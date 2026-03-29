@@ -259,10 +259,12 @@ if st.button("🚀 1. Generate Official Letter"):
             Supported by The Reminder India community.
 
             ---
+            # ... (previous prompt text) ...
+            ---
             RULES: 
             - RAW TEXT ONLY. NO markdown formatting like backticks (```) or bolding (**).
             - Omit any empty fields completely.
-            - END WITH: 'SUGGESTED_EMAIL: ' (Followed by the likely official email, or blank if unknown).
+            - END WITH: 'SUGGESTED_EMAIL: ' (Followed by the exact official email if you are 100% certain. If you do not know it, or if your data says "[email protected]", you MUST leave it completely blank).
             """
             response = client.chat.completions.create(
                 model="gpt-4o-mini",
@@ -270,7 +272,12 @@ if st.button("🚀 1. Generate Official Letter"):
             )
             res_content = response.choices[0].message.content.replace("```", "").strip()
             st.session_state.letter = res_content.split("SUGGESTED_EMAIL:")[0].strip()
+            
+            # Extract the email and filter out the bot-protection text
             raw_email = res_content.split("SUGGESTED_EMAIL:")[1].strip() if "SUGGESTED_EMAIL:" in res_content else ""
+            if "[email protected]" in raw_email:
+                raw_email = ""
+                
             st.session_state.sug_email = raw_email.replace("`", "").replace("'", "").strip()
 
 # 7. STEP 4: REVIEW & MULTI-SEND
