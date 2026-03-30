@@ -234,7 +234,6 @@ if st.button("🚀 1. Generate Official Letter", key=f"gen_{st.session_state.res
             maps_url = st.session_state.get('maps_link', "")
             has_evidence = True if uploaded_files and len(uploaded_files) > 0 else False
 
-            # 💡 NEW LOGIC: Force perfect civic labels for Hindi
             from_label = "प्रेषक" if "Hindi" in target_language else f"the translation of 'From' in {target_language}"
             to_label = "सेवा में" if "Hindi" in target_language else f"the translation of 'To' in {target_language}"
 
@@ -393,23 +392,41 @@ if "letter" in st.session_state:
                         except Exception as e:
                             st.error(f"Error sending email: {e}")
 
-    # --- 💡 NEW WHATSAPP ROUTING FEATURE ---
+    # --- 💡 NEW MULTI-WHATSAPP ROUTING FEATURE ---
     st.markdown("---")
     st.markdown("##### 🟢 WhatsApp Routing (Direct Message)")
-    st.caption("If you know the official WhatsApp number for your local department, enter it below to send the letter directly.")
+    st.caption("If you know the official WhatsApp numbers for your local departments, enter them below separated by commas (e.g., 9876543210, 8877665544).")
     
-    wa_number = st.text_input("Official's 10-Digit WhatsApp Number:", max_chars=10, key=f"wa_{st.session_state.reset_counter}")
+    wa_numbers_input = st.text_input("Official 10-Digit WhatsApp Number(s):", key=f"wa_multi_{st.session_state.reset_counter}")
     
-    if wa_number:
-        if not wa_number.isdigit():
-            st.error("⚠️ WhatsApp number must contain numbers only.")
-        elif len(wa_number) < 10:
-            st.warning("⚠️ Please enter the full 10-digit number.")
-        else:
-            # Number is exactly 10 digits - generate the link!
+    if wa_numbers_input:
+        # Split by comma and clean up whitespace
+        raw_numbers = [num.strip() for num in wa_numbers_input.split(',')]
+        valid_numbers = []
+        invalid_numbers = []
+        
+        for num in raw_numbers:
+            if num.isdigit() and len(num) == 10:
+                valid_numbers.append(num)
+            elif num: # ignore empty strings from trailing commas
+                invalid_numbers.append(num)
+        
+        # Show errors for bad numbers
+        if invalid_numbers:
+            st.error(f"⚠️ These numbers are invalid (must be exactly 10 digits): {', '.join(invalid_numbers)}")
+        
+        # Generate buttons for good numbers
+        if valid_numbers:
             encoded_letter = urllib.parse.quote(st.session_state.letter)
-            wa_link = f"https://wa.me/91{wa_number}?text={encoded_letter}"
-            st.link_button("🟢 Send Official Letter via WhatsApp", wa_link, use_container_width=True)
+            
+            # Create a clean layout if there are multiple buttons
+            st.markdown("👇 **Click each button to send via WhatsApp**")
+            btn_cols = st.columns(min(len(valid_numbers), 3)) # Max 3 buttons per row
+            
+            for i, num in enumerate(valid_numbers):
+                wa_link = f"https://wa.me/91{num}?text={encoded_letter}"
+                with btn_cols[i % 3]:
+                    st.link_button(f"🟢 Send to {num}", wa_link, use_container_width=True)
     # ---------------------------------------
 
     st.markdown("<br><br>", unsafe_allow_html=True)
