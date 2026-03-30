@@ -100,7 +100,6 @@ def get_base64_of_bin_file(bin_file):
 banner_base64 = get_base64_of_bin_file("banner.jpg")
 
 if banner_base64:
-    # 💡 CHANGED: We now use a true <img> tag with "height: auto" so it never crops!
     header_banner_html = f"""
     <div style="margin-bottom: 2em; text-align: center;">
         <img src="data:image/jpeg;base64,{banner_base64}" 
@@ -232,50 +231,51 @@ if st.button("🚀 1. Generate Official Letter", key=f"gen_{st.session_state.res
     else:
         with st.spinner(f"Drafting formal petition..."):
             p_val = user_phone.strip()
-            contact_line = f"Contact Number: {p_val}" if p_val else ""
             
             maps_url = st.session_state.get('maps_link', "")
             gps_line = f"The exact location of this issue can be navigated to via Google Maps: {maps_url}" if maps_url else ""
             
             evidence_line = "I have attached photographic/video evidence to this email for your reference." if uploaded_files and len(uploaded_files) > 0 else ""
 
+            # 💡 THE NEW 100% NATIVE LANGUAGE PROMPT
             system_prompt = f"""
-            You are a professional assistant drafting a formal civic complaint letter in {target_language}.
-            Write a flowing, natural letter. DO NOT output bullet points like "BODY:" or "SIGN-OFF:".
-            
-            Format the letter exactly like this:
+            You are a professional assistant drafting a formal civic complaint letter. 
+            CRITICAL INSTRUCTION: The ENTIRE letter—including all labels (like 'From', 'To', 'Subject', 'Dear Sir/Madam', 'Sincerely', 'Date'), the current date formatting, and the body paragraphs—MUST be written completely in {target_language}. 
+            Do not use English words unless the chosen target language is English.
 
-            {current_date}
+            Format the letter exactly like this structure (but translate all structural words to {target_language}):
 
-            From,
+            [Translate {current_date} into {target_language}]
+
+            [Translate 'From,']
             {user_name}
-            {contact_line}
+            [If phone is provided, translate 'Contact Number:' and add {p_val}]
 
-            To,
-            The Municipal Commissioner,
+            [Translate 'To,']
+            [Translate 'The Municipal Commissioner,']
             {selected_loc['Town']}, {selected_loc['District']}.
-            PIN: {selected_loc['PIN']}
+            [Translate 'PIN:'] {selected_loc['PIN']}
 
-            Subject: [Generate a clear, concise subject line]
+            [Translate 'Subject:'] [Generate a clear, concise subject line in {target_language}]
 
-            Dear Sir/Madam,
+            [Translate 'Respected Sir/Madam,']
 
-            [Write 2 to 3 professional paragraphs explaining this issue: "{issue}".]
+            [Write 2 to 3 professional paragraphs explaining this issue: "{issue}". Write this completely in {target_language}.]
             
-            {gps_line}
-            {evidence_line}
-            [Smoothly weave the location and evidence sentences into the text if they are provided above. If they are empty, do not mention them at all.]
+            [Translate and insert this sentence ONLY if it is not empty: "{gps_line}"]
+            [Translate and insert this sentence ONLY if it is not empty: "{evidence_line}"]
 
-            Sincerely,
+            [Translate 'Sincerely,']
             {user_name}
-            Supported by The Reminder India community.
+            [Translate 'Supported by The Reminder India community.']
 
             ---
             RULES: 
             - RAW TEXT ONLY. NO markdown formatting like backticks (```) or bolding (**).
             - Omit any empty fields completely.
-            - END WITH: 'SUGGESTED_EMAIL: ' (Followed by the exact official email if you are 100% certain. If you do not know it, or if your data says "[email protected]", you MUST leave it completely blank).
+            - END WITH: 'SUGGESTED_EMAIL: ' (This specific keyword MUST remain exactly 'SUGGESTED_EMAIL:' in English, followed by the exact official email if you know it, otherwise leave blank).
             """
+            
             response = client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": issue}]
@@ -400,12 +400,9 @@ if "letter" in st.session_state:
     st.markdown("---")
     col_spacer, col_clear = st.columns([3, 1])
     with col_clear:
-        # --- THE ULTIMATE FORCE RESET ---
         if st.button("🔄 Clear Form & Start New", key=f"clear_btn_{st.session_state.reset_counter}"):
-            # Wipe everything except the counter
             keys_to_delete = [k for k in st.session_state.keys() if k != 'reset_counter']
             for k in keys_to_delete:
                 del st.session_state[k]
-            # Tick the counter up to force Streamlit to destroy and redraw the widgets
             st.session_state.reset_counter += 1
             st.rerun()
