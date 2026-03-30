@@ -229,50 +229,44 @@ if st.button("🚀 1. Generate Official Letter", key=f"gen_{st.session_state.res
     if not user_name or not selected_loc or not issue.strip() or len(user_pin) != 6:
         st.error("⚠️ Please complete all fields correctly.")
     else:
-        with st.spinner(f"Drafting formal petition..."):
+        with st.spinner(f"Drafting formal petition in {target_language}..."):
             p_val = user_phone.strip()
-            
             maps_url = st.session_state.get('maps_link', "")
-            gps_line = f"The exact location of this issue can be navigated to via Google Maps: {maps_url}" if maps_url else ""
-            
-            evidence_line = "I have attached photographic/video evidence to this email for your reference." if uploaded_files and len(uploaded_files) > 0 else ""
+            has_evidence = True if uploaded_files and len(uploaded_files) > 0 else False
 
-            # 💡 THE NEW 100% NATIVE LANGUAGE PROMPT
+            # 💡 THE REBUILT "TRANSLATE EVERYTHING" PROMPT
             system_prompt = f"""
-            You are a professional assistant drafting a formal civic complaint letter. 
-            CRITICAL INSTRUCTION: The ENTIRE letter—including all labels (like 'From', 'To', 'Subject', 'Dear Sir/Madam', 'Sincerely', 'Date'), the current date formatting, and the body paragraphs—MUST be written completely in {target_language}. 
-            Do not use English words unless the chosen target language is English.
-
-            Format the letter exactly like this structure (but translate all structural words to {target_language}):
-
-            [Translate {current_date} into {target_language}]
-
-            [Translate 'From,']
-            {user_name}
-            [If phone is provided, translate 'Contact Number:' and add {p_val}]
-
-            [Translate 'To,']
-            [Translate 'The Municipal Commissioner,']
-            {selected_loc['Town']}, {selected_loc['District']}.
-            [Translate 'PIN:'] {selected_loc['PIN']}
-
-            [Translate 'Subject:'] [Generate a clear, concise subject line in {target_language}]
-
-            [Translate 'Respected Sir/Madam,']
-
-            [Write 2 to 3 professional paragraphs explaining this issue: "{issue}". Write this completely in {target_language}.]
+            You are an expert bilingual civic assistant. Your task is to write a formal civic complaint letter ENTIRELY in {target_language}.
             
-            [Translate and insert this sentence ONLY if it is not empty: "{gps_line}"]
-            [Translate and insert this sentence ONLY if it is not empty: "{evidence_line}"]
+            CRITICAL RULE: You MUST translate or transliterate ALL English names, dates, cities, and structural elements into the native script of {target_language}. Do not leave any English words unless {target_language} is English.
 
-            [Translate 'Sincerely,']
-            {user_name}
-            [Translate 'Supported by The Reminder India community.']
+            Here is the raw data for the letter:
+            - Date: {current_date} (Translate the month and format appropriately for {target_language})
+            - Sender Name: {user_name} (Transliterate to {target_language} script)
+            - Sender Phone: {p_val}
+            - Recipient Title: The Municipal Commissioner
+            - City/Town: {selected_loc['Town']} (Transliterate to {target_language} script)
+            - District: {selected_loc['District']} (Transliterate to {target_language} script)
+            - PIN Code: {selected_loc['PIN']}
+            - Issue Category & Details: {issue}
+            - GPS Link Available: {maps_url}
+            - Evidence Attached: {'Yes' if has_evidence else 'No'}
+
+            FORMAT INSTRUCTIONS (Generate everything below in {target_language}):
+            1. Date at the top.
+            2. The "From" section (Sender name and phone). Add appropriate labels in {target_language}.
+            3. The "To" section (Recipient title, City, District, PIN). Add appropriate labels in {target_language}.
+            4. A clear, formal Subject line.
+            5. A formal Salutation (e.g., Respected Sir/Madam).
+            6. Write 2-3 professional paragraphs explaining the issue. 
+               - If a GPS Link is provided, write a sentence mentioning the exact location can be tracked via the map link.
+               - If Evidence Attached is 'Yes', write a sentence stating that photo/video evidence is attached to this email.
+            7. A formal closing (e.g., Sincerely) and the Sender's name.
+            8. The sign-off: "Supported by The Reminder India community." (Translate this phrase completely).
 
             ---
-            RULES: 
-            - RAW TEXT ONLY. NO markdown formatting like backticks (```) or bolding (**).
-            - Omit any empty fields completely.
+            FINAL RULES: 
+            - Output RAW TEXT ONLY. NO markdown formatting like backticks (```) or bolding (**).
             - END WITH: 'SUGGESTED_EMAIL: ' (This specific keyword MUST remain exactly 'SUGGESTED_EMAIL:' in English, followed by the exact official email if you know it, otherwise leave blank).
             """
             
