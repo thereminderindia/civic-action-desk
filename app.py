@@ -327,6 +327,9 @@ if "letter" in st.session_state:
         else:
             txt_bytes = final_download_text.encode('utf-8')
             st.download_button("📥 Download Letter (With Dispatch Log)", data=txt_bytes, file_name=f"TRI_Report_{user_pin}.txt", mime="text/plain", key=f"dl_txt_{st.session_state.reset_counter}")
+        
+        # Friendly reminder for Facebook/Insta users
+        st.caption("💡 **Want to post on Facebook or Instagram?** Download the letter above and attach it directly to your post!")
 
     with col_btn2:
         st.caption("By clicking send, you agree to our [Privacy Policy](https://sites.google.com/view/thereminderindia/home).")
@@ -392,7 +395,7 @@ if "letter" in st.session_state:
                         except Exception as e:
                             st.error(f"Error sending email: {e}")
 
-    # --- 💡 NEW MULTI-WHATSAPP ROUTING FEATURE ---
+    # --- MULTI-WHATSAPP ROUTING ---
     st.markdown("---")
     st.markdown("##### 🟢 WhatsApp Routing (Direct Message)")
     st.caption("If you know the official WhatsApp numbers for your local departments, enter them below separated by commas (e.g., 9876543210, 8877665544).")
@@ -400,7 +403,6 @@ if "letter" in st.session_state:
     wa_numbers_input = st.text_input("Official 10-Digit WhatsApp Number(s):", key=f"wa_multi_{st.session_state.reset_counter}")
     
     if wa_numbers_input:
-        # Split by comma and clean up whitespace
         raw_numbers = [num.strip() for num in wa_numbers_input.split(',')]
         valid_numbers = []
         invalid_numbers = []
@@ -408,25 +410,43 @@ if "letter" in st.session_state:
         for num in raw_numbers:
             if num.isdigit() and len(num) == 10:
                 valid_numbers.append(num)
-            elif num: # ignore empty strings from trailing commas
+            elif num:
                 invalid_numbers.append(num)
         
-        # Show errors for bad numbers
         if invalid_numbers:
             st.error(f"⚠️ These numbers are invalid (must be exactly 10 digits): {', '.join(invalid_numbers)}")
         
-        # Generate buttons for good numbers
         if valid_numbers:
             encoded_letter = urllib.parse.quote(st.session_state.letter)
-            
-            # Create a clean layout if there are multiple buttons
             st.markdown("👇 **Click each button to send via WhatsApp**")
-            btn_cols = st.columns(min(len(valid_numbers), 3)) # Max 3 buttons per row
+            btn_cols = st.columns(min(len(valid_numbers), 3)) 
             
             for i, num in enumerate(valid_numbers):
                 wa_link = f"https://wa.me/91{num}?text={encoded_letter}"
                 with btn_cols[i % 3]:
                     st.link_button(f"🟢 Send to {num}", wa_link, use_container_width=True)
+
+    # --- 💡 NEW SOCIAL MEDIA AMPLIFICATION (X / TWITTER) ---
+    st.markdown("---")
+    st.markdown("##### 🐦 Public Amplification (X / Twitter)")
+    st.caption("Public pressure works! Since X has a strict character limit, this will generate a punchy summary of your complaint so you can tag your local authorities publicly.")
+    
+    tw_handle = st.text_input("Official's X Handle (e.g., @KandhlaPalika):", value="@", key=f"tw_handle_{st.session_state.reset_counter}")
+    
+    # Build a short, high-impact tweet
+    display_category = issue_category if issue_category else "Local Infrastructure"
+    tweet_text = f"🚨 Civic Alert: {selected_loc['Town']}, PIN {selected_loc['PIN']}\n"
+    tweet_text += f"Issue: {display_category}\n\n"
+    
+    if tw_handle and tw_handle.strip() != "@":
+        tweet_text += f"{tw_handle.strip()} Please take urgent action on this matter.\n\n"
+        
+    tweet_text += "#CivicAction #TheReminderIndia"
+    
+    encoded_tweet = urllib.parse.quote(tweet_text)
+    tw_link = f"https://twitter.com/intent/tweet?text={encoded_tweet}"
+    
+    st.link_button("🐦 Post Summary to X (Twitter)", tw_link, use_container_width=True)
     # ---------------------------------------
 
     st.markdown("<br><br>", unsafe_allow_html=True)
