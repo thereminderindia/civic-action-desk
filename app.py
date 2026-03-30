@@ -234,7 +234,10 @@ if st.button("🚀 1. Generate Official Letter", key=f"gen_{st.session_state.res
             maps_url = st.session_state.get('maps_link', "")
             has_evidence = True if uploaded_files and len(uploaded_files) > 0 else False
 
-            # 💡 THE REBUILT "TRANSLATE EVERYTHING" PROMPT
+            # 💡 NEW LOGIC: Force perfect civic labels for Hindi
+            from_label = "प्रेषक" if "Hindi" in target_language else f"the translation of 'From' in {target_language}"
+            to_label = "सेवा में" if "Hindi" in target_language else f"the translation of 'To' in {target_language}"
+
             system_prompt = f"""
             You are an expert bilingual civic assistant. Your task is to write a formal civic complaint letter ENTIRELY in {target_language}.
             
@@ -254,8 +257,8 @@ if st.button("🚀 1. Generate Official Letter", key=f"gen_{st.session_state.res
 
             FORMAT INSTRUCTIONS (Generate everything below in {target_language}):
             1. Date at the top.
-            2. The "From" section (Sender name and phone). Add appropriate labels in {target_language}.
-            3. The "To" section (Recipient title, City, District, PIN). Add appropriate labels in {target_language}.
+            2. The "From" section (Sender name and phone). You MUST use '{from_label}' as the exact label for this section.
+            3. The "To" section (Recipient title, City, District, PIN). You MUST use '{to_label}' as the exact label for this section.
             4. A clear, formal Subject line.
             5. A formal Salutation (e.g., Respected Sir/Madam).
             6. Write 2-3 professional paragraphs explaining the issue. 
