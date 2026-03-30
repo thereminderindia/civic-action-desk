@@ -117,6 +117,15 @@ else:
 st.markdown(header_banner_html, unsafe_allow_html=True)
 # --- END OF NEW HEADER BLOCK ---
 
+# --- 🎥 NEW: VIDEO TUTORIAL EXPANDER ---
+with st.expander("🎥 New here? Watch how to use this platform", expanded=False):
+    # Streamlit will automatically find and play the local file from your GitHub repo
+    try:
+        st.video("promo_video.mp4")
+        st.caption("A quick guide to generating and sending your official civic complaint.")
+    except Exception as e:
+        st.error("Video is currently unavailable.")
+
 # 4. STEP 1: LANGUAGE & LOCATION
 st.markdown("---")
 st.subheader("📍 Step 1: Language & Location")
