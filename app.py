@@ -393,6 +393,25 @@ if "letter" in st.session_state:
                         except Exception as e:
                             st.error(f"Error sending email: {e}")
 
+    # --- 💡 NEW WHATSAPP ROUTING FEATURE ---
+    st.markdown("---")
+    st.markdown("##### 🟢 WhatsApp Routing (Direct Message)")
+    st.caption("If you know the official WhatsApp number for your local department, enter it below to send the letter directly.")
+    
+    wa_number = st.text_input("Official's 10-Digit WhatsApp Number:", max_chars=10, key=f"wa_{st.session_state.reset_counter}")
+    
+    if wa_number:
+        if not wa_number.isdigit():
+            st.error("⚠️ WhatsApp number must contain numbers only.")
+        elif len(wa_number) < 10:
+            st.warning("⚠️ Please enter the full 10-digit number.")
+        else:
+            # Number is exactly 10 digits - generate the link!
+            encoded_letter = urllib.parse.quote(st.session_state.letter)
+            wa_link = f"https://wa.me/91{wa_number}?text={encoded_letter}"
+            st.link_button("🟢 Send Official Letter via WhatsApp", wa_link, use_container_width=True)
+    # ---------------------------------------
+
     st.markdown("<br><br>", unsafe_allow_html=True)
     st.markdown("---")
     col_spacer, col_clear = st.columns([3, 1])
