@@ -424,9 +424,6 @@ total_petitions = get_petition_count()
 if total_petitions > 0:
     st.caption(f"🔥 Join the movement: **{total_petitions}** civic petitions successfully dispatched via The Reminder India.")
 
-display_title = app_titles.get(global_language, "The Reminder India")
-st.title(display_title)
-
 col_text, col_img = st.columns([6, 4], gap="large")
 
 with col_text:
@@ -664,20 +661,24 @@ if st.session_state.gen_count >= 3:
     st.error("🛑 Daily Limit Reached: To keep this free community service running, we limit users to 3 petitions per session. Please try again tomorrow!")
 else:
     if st.button(ui.get("gen_btn", "Generate"), key=f"gen_{st.session_state.reset_counter}"):
-        # Increase the counter immediately when clicked
+        # 1. Increase the counter immediately when clicked
         st.session_state.gen_count += 1
-
-if st.button(ui.get("gen_btn", "Generate"), key=f"gen_{st.session_state.reset_counter}"):
-    if "letter" in st.session_state:
-        del st.session_state["letter"]
         
-    if not user_name or not selected_loc or not issue.strip() or len(user_pin) != 6:
-        st.error("⚠️ Please complete all fields correctly.")
-    else:
-        with st.spinner(f"Drafting formal petition in {global_language}..."):
-            p_val = user_phone.strip()
-            maps_url = st.session_state.get('maps_link', "")
-            has_evidence = True if uploaded_files and len(uploaded_files) > 0 else False
+        # 2. Clear out the old letter if there is one
+        if "letter" in st.session_state:
+            del st.session_state["letter"]
+            
+        # 3. Check for errors
+        if not user_name or not selected_loc or not issue.strip() or len(user_pin) != 6:
+            st.error("⚠️ Please complete all fields correctly.")
+        else:
+            # 4. Actually generate the letter!
+            with st.spinner(f"Drafting formal petition in {global_language}..."):
+                p_val = user_phone.strip()
+                maps_url = st.session_state.get('maps_link', "")
+                has_evidence = True if uploaded_files and len(uploaded_files) > 0 else False
+                
+                # ... (The rest of your generation logic continues right below here) ...
 
             # Package the user data into the requested dictionaries
             user_details_dict = {"name": user_name, "phone": p_val, "category": issue_category}
