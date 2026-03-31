@@ -278,33 +278,44 @@ def get_translated_ui(language):
              st.error("Critical Error: Core UI translation file (en.json) missing from locales folder.")
              return {}
 
+# --- LOCAL TRANSLATION ENGINE FOR UI ---
+@st.cache_data
+def get_translated_ui(language):
+    lang_map = {
+        "English": "en", "Hindi (हिन्दी)": "hi", "Bengali (বাংলা)": "bn", 
+        "Marathi (मराठी)": "mr", "Telugu (తెలుగు)": "te", "Tamil (தமிழ்)": "ta", 
+        "Gujarati (ગુજરાતી)": "gu", "Urdu (اردو)": "ur", "Kannada (ಕನ್ನಡ)": "kn", 
+        "Odia (ଓଡ଼ିଆ)": "or", "Malayalam (മലയാളം)": "ml", "Punjabi (ਪੰਜਾਬੀ)": "pa", 
+        "Assamese (অসমীয়া)": "as", "Maithili (मैथिली)": "mai", "Santali (संताली)": "sat", 
+        "Kashmiri (کٲशُر)": "ks", "Nepali (नेपाली)": "ne", "Konkani (कोंकणी)": "kok", 
+        "Sindhi (سنڌي)": "sd", "Dogri (डोगरी)": "doi", "Manipuri (মৈতৈলোন)": "mni", 
+        "Bodo (बर')": "brx", "Sanskrit (संस्कृतम्)": "sa"
+    }
+    file_key = lang_map.get(language, "en")
+    file_path = os.path.join("locales", f"{file_key}.json")
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        try:
+             with open(os.path.join("locales", "en.json"), 'r', encoding='utf-8') as f:
+                 return json.load(f)
+        except FileNotFoundError:
+             st.error("Critical Error: Core UI translation file (en.json) missing from locales folder.")
+             return {}
+
 # --- LOCAL TRANSLATION ENGINE FOR SLIDESHOW ---
 @st.cache_data
 def get_translated_slides(language):
     lang_map = {
-        "English": "en_slides.json",
-        "Hindi (हिन्दी)": "hi_slides.json",
-        "Bengali (বাংলা)": "bn_slides.json",
-        "Marathi (मराठी)": "mr_slides.json",
-        "Telugu (తెలుగు)": "te_slides.json",
-        "Tamil (தமிழ்)": "ta_slides.json",
-        "Gujarati (ગુજરાતી)": "gu_slides.json",
-        "Urdu (اردو)": "ur_slides.json",
-        "Kannada (ಕನ್ನಡ)": "kn_slides.json",
-        "Odia (ଓଡ଼ିଆ)": "or_slides.json",
-        "Malayalam (മലയാളം)": "ml_slides.json",
-        "Punjabi (ਪੰਜਾਬੀ)": "pa_slides.json",
-        "Assamese (অসমীয়া)": "as_slides.json",
-        "Maithili (मैथिली)": "mai_slides.json",
-        "Santali (संताली)": "sat_slides.json",
-        "Kashmiri (کأشُر)": "ks_slides.json",
-        "Nepali (नेपाली)": "ne_slides.json",
-        "Konkani (कोंकणी)": "kok_slides.json",
-        "Sindhi (سنڌي)": "sd_slides.json",
-        "Dogri (डोगरी)": "doi_slides.json",
-        "Manipuri (মণিপুরী)": "mni_slides.json",
-        "Bodo (बर')": "brx_slides.json",
-        "Sanskrit (संस्कृतम्)": "sa_slides.json"
+        "English": "en_slides", "Hindi (हिन्दी)": "hi_slides", "Bengali (বাংলা)": "bn_slides", 
+        "Marathi (मराठी)": "mr_slides", "Telugu (తెలుగు)": "te_slides", "Tamil (தமிழ்)": "ta_slides", 
+        "Gujarati (ગુજરાતી)": "gu_slides", "Urdu (اردو)": "ur_slides", "Kannada (ಕನ್ನಡ)": "kn_slides", 
+        "Odia (ଓଡ଼ିଆ)": "or_slides", "Malayalam (മലയാളം)": "ml_slides", "Punjabi (ਪੰਜਾਬੀ)": "pa_slides", 
+        "Assamese (অসমীয়া)": "as_slides", "Maithili (मैथिली)": "mai_slides", "Santali (संताली)": "sat_slides", 
+        "Kashmiri (کٲशُر)": "ks_slides", "Nepali (नेपाली)": "ne_slides", "Konkani (कोंकणी)": "kok_slides", 
+        "Sindhi (سنڌي)": "sd_slides", "Dogri (डोगरी)": "doi_slides", "Manipuri (মৈতৈলোন)": "mni_slides", 
+        "Bodo (बर')": "brx_slides", "Sanskrit (संस्कृतम्)": "sa_slides"
     }
     file_key = lang_map.get(language, "en_slides")
     file_path = os.path.join("locales", f"{file_key}.json")
@@ -548,15 +559,15 @@ with search_container:
             else:
                 dept = "Municipal Commissioner OR Nagar Palika"
 
-            # 2. Search by DISTRICT instead of Town (Officials sit at the District level)
-            # 3. Dropped the confusing 'site:.gov.in' logic to allow legitimate local contact directories
+            # 2. Search by DISTRICT instead of Town
             search_query = f'"{selected_loc["District"]}" {dept} official email contact'
             google_url = f"https://www.google.com/search?q={urllib.parse.quote_plus(search_query)}"
             
-            # 4. Clean the "BO/SO" jargon just for the button display so it looks clean
+            # 3. Clean the "BO/SO" jargon just for the button display
             display_town = selected_loc['Town'].replace(" BO", "").replace(" SO", "").replace(" HO", "").strip()
             
             st.link_button(f"🌐 Search Email for {display_town}", google_url)
+            
         else:
             st.caption("📍 Enter a 6-digit PIN in Step 1 to unlock the official email search tool.")
 
