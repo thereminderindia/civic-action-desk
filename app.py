@@ -90,10 +90,19 @@ def create_pdf(text, language):
         st.error(f"PDF Generation Error: {e}")
         return None
 
-# --- LOCAL TRANSLATION ENGINE FOR UI (Updated) ---
+# --- LOCAL TRANSLATION ENGINE FOR UI ---
 @st.cache_data
 def get_translated_ui(language):
-    lang_map = {"English": "en", "Hindi (हिन्दी)": "hi", "Bengali (বাংলা)": "bn"} 
+    lang_map = {
+        "English": "en", "Hindi (हिन्दी)": "hi", "Bengali (বাংলা)": "bn",
+        "Marathi (मराठी)": "mr", "Telugu (తెలుగు)": "te", "Tamil (தமிழ்)": "ta",
+        "Gujarati (ગુજરાતી)": "gu", "Urdu (اردو)": "ur", "Kannada (ಕನ್ನಡ)": "kn",
+        "Odia (ଓଡ଼ିଆ)": "or", "Malayalam (മലയാളം)": "ml", "Punjabi (ਪੰਜਾਬੀ)": "pa",
+        "Assamese (অসমীয়া)": "as", "Maithili (मैथिली)": "mai", "Santali (संताली)": "sat",
+        "Kashmiri (کٲशُر)": "ks", "Nepali (नेपाली)": "ne", "Konkani (कोंकणी)": "kok",
+        "Sindhi (سنڌي)": "sd", "Dogri (डोगरी)": "doi", "Manipuri (মৈতৈলোন)": "mni",
+        "Bodo (बर')": "brx", "Sanskrit (संस्कृतम्)": "sa"
+    }
     file_key = lang_map.get(language, "en")
     
     file_path = os.path.join("locales", f"{file_key}.json")
@@ -109,10 +118,19 @@ def get_translated_ui(language):
              st.error("Critical Error: Core UI translation file (en.json) missing from locales folder.")
              return {}
 
-# --- LOCAL TRANSLATION ENGINE FOR SLIDESHOW (Updated) ---
+# --- LOCAL TRANSLATION ENGINE FOR SLIDESHOW ---
 @st.cache_data
 def get_translated_slides(language):
-    lang_map = {"English": "en_slides", "Hindi (हिन्दी)": "hi_slides", "Bengali (বাংলা)": "bn_slides"} 
+    lang_map = {
+        "English": "en_slides", "Hindi (हिन्दी)": "hi_slides", "Bengali (বাংলা)": "bn_slides",
+        "Marathi (मराठी)": "mr_slides", "Telugu (తెలుగు)": "te_slides", "Tamil (தமிழ்)": "ta_slides",
+        "Gujarati (ગુજરાતી)": "gu_slides", "Urdu (اردو)": "ur_slides", "Kannada (ಕನ್ನಡ)": "kn_slides",
+        "Odia (ଓଡ଼ିଆ)": "or_slides", "Malayalam (മലയാളം)": "ml_slides", "Punjabi (ਪੰਜਾਬੀ)": "pa_slides",
+        "Assamese (অসমীয়া)": "as_slides", "Maithili (मैथिली)": "mai_slides", "Santali (संताली)": "sat_slides",
+        "Kashmiri (کٲशُر)": "ks_slides", "Nepali (नेपाली)": "ne_slides", "Konkani (कोंकणी)": "kok_slides",
+        "Sindhi (سنڌي)": "sd_slides", "Dogri (डोगरी)": "doi_slides", "Manipuri (মৈতৈলোন)": "mni_slides",
+        "Bodo (बर')": "brx_slides", "Sanskrit (संस्कृतम्)": "sa_slides"
+    }
     file_key = lang_map.get(language, "en_slides")
     
     file_path = os.path.join("locales", f"{file_key}.json")
