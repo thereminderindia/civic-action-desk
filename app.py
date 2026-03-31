@@ -364,7 +364,7 @@ if "letter" in st.session_state:
         st.caption("💡 **Want to post on Facebook or Instagram?** Download the letter above and attach it directly to your post!")
 
     with col_btn2:
-        st.caption("By clicking send, you agree to our [Privacy Policy](https://sites.google.com/view/thereminderindia/home).")
+        st.caption("By clicking send, you agree to our [Privacy Policy](https://sites.google.com/view/httpsthereminderindia-streamli/home).")
         
         if st.button("📧 Send Official Email Now", key=f"send_email_{st.session_state.reset_counter}"):
             combined_bcc_list = []
