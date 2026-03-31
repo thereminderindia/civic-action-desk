@@ -590,6 +590,11 @@ c1, c2, c3 = st.columns(3)
 cat_key = f"category_{st.session_state.reset_counter}"
 desc_key = f"desc_{st.session_state.reset_counter}"
 
+# --- NEW: THE WIPE-CLEAN TRIGGER ---
+def clear_description():
+    # This wipes the text box memory when the dropdown is manually changed
+    st.session_state[desc_key] = ""
+
 # Now the buttons directly inject generic, professional text into Streamlit's memory!
 if c1.button("💡 Light"):
     st.session_state[cat_key] = "Non-functional Streetlight"
@@ -603,11 +608,12 @@ if c3.button("🛣️ Road"):
     st.session_state[cat_key] = "Broken Road / Pothole"
     st.session_state[desc_key] = "The main road is severely damaged with deep, dangerous potholes. It is causing frequent traffic disruptions and poses a high risk of vehicle damage and accidents for daily commuters."
 
-# The Category Dropdown
+# The Category Dropdown (Now equipped with the on_change trigger!)
 issue_category = st.selectbox(
     ui.get("category", "Category"), 
     options=["", "Uncollected Garbage", "Broken Road / Pothole", "Clogged Drainage", "Non-functional Streetlight", "Contaminated Water", "Other"],
-    key=cat_key
+    key=cat_key,
+    on_change=clear_description  # <-- This tells it to fire the wipe-clean trigger!
 )
 
 # The Description Box
