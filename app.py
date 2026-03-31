@@ -226,7 +226,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Determine global language FIRST
-st.sidebar.title("🌐 App Settings / ऐप सेटिंग्स")
+st.sidebar.subheader("🌐 App Settings / ऐप सेटिंग्स")
 global_language = st.sidebar.selectbox("Select Language:", options=
     ["English", "Hindi (हिन्दी)", "Bengali (বাংলা)", "Marathi (मराठी)", 
      "Telugu (తెలుగు)", "Tamil (தமிழ்)", "Gujarati (ગુજરાતી)", 
@@ -240,7 +240,7 @@ global_language = st.sidebar.selectbox("Select Language:", options=
 ui = get_translated_ui(global_language)
 
 st.sidebar.markdown("---")
-st.sidebar.title(ui["connect"])
+st.sidebar.subheader(ui["connect"])
 st.sidebar.link_button("📺 YouTube", "https://youtube.com/@TheReminderIndia")
 st.sidebar.link_button("🔵 Facebook", "https://facebook.com/TheReminderIndia")
 st.sidebar.link_button("📸 Instagram", "https://instagram.com/TheReminderIndia")
@@ -252,7 +252,7 @@ search_container = st.sidebar.container()
 # ------------------------------------------------
 
 st.sidebar.markdown("---")
-st.sidebar.title(ui["tools"])
+st.sidebar.subheader(ui["tools"])
 st.sidebar.link_button("🔍 Pincode Verify", "https://www.indiapost.gov.in/VAS/Pages/findpincode.aspx")
 st.sidebar.markdown("---")
 st.sidebar.caption(ui["legal"])
