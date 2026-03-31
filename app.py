@@ -11,7 +11,7 @@ import re
 import mimetypes
 from streamlit_gsheets import GSheetsConnection
 from streamlit_js_eval import streamlit_js_eval
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import urllib.parse
 import base64
 import os
@@ -118,7 +118,10 @@ if "gen_count" not in st.session_state:
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 SENDER_EMAIL = st.secrets["SENDER_EMAIL"]
 APP_PASSWORD = st.secrets["APP_PASSWORD"]
-current_date = datetime.now().strftime("%d %B, %Y")
+
+# Locks the app's clock to Indian Standard Time (UTC +5:30)
+ist_timezone = timezone(timedelta(hours=5, minutes=30))
+current_date = datetime.now(ist_timezone).strftime("%d %B, %Y")
 
 try:
     conn = st.connection("gsheets", type=GSheetsConnection)
@@ -144,13 +147,6 @@ def load_pincode_db():
     except:
         return None
 
-# --- PDF ENGINE (Updated for Unicode) ---
-FONT_MAP = {
-    "Hindi (हिन्दी)": "NotoSansDevanagari-Regular.ttf",
-    "Bengali (বাংলা)": "NotoSansBengali_Condensed-Regular.ttf",
-    # Add your other downloaded fonts here...
-    "English": "NotoSans-Regular.ttf"
-}
 # --- PDF ENGINE ---
 def create_pdf(text, language):
     try:
@@ -235,47 +231,6 @@ def generate_official_letter(user_details, issue_description, location_info, glo
         ]
     )
     return response.choices[0].message.content
-
-# --- LOCAL TRANSLATION ENGINE FOR UI ---
-@st.cache_data
-def get_translated_ui(language):
-    lang_map = {
-        "English": "en_slides.json",
-        "Hindi (हिन्दी)": "hi_slides.json",
-        "Bengali (বাংলা)": "bn_slides.json",
-        "Marathi (मराठी)": "mr_slides.json",
-        "Telugu (తెలుగు)": "te_slides.json",
-        "Tamil (தமிழ்)": "ta_slides.json",
-        "Gujarati (ગુજરાતી)": "gu_slides.json",
-        "Urdu (اردو)": "ur_slides.json",
-        "Kannada (ಕನ್ನಡ)": "kn_slides.json",
-        "Odia (ଓଡ଼ିଆ)": "or_slides.json",
-        "Malayalam (മലയാളം)": "ml_slides.json",
-        "Punjabi (ਪੰਜਾਬੀ)": "pa_slides.json",
-        "Assamese (অসমীয়া)": "as_slides.json",
-        "Maithili (मैथिली)": "mai_slides.json",
-        "Santali (संताली)": "sat_slides.json",
-        "Kashmiri (کأشُر)": "ks_slides.json",
-        "Nepali (नेपाली)": "ne_slides.json",
-        "Konkani (कोंकणी)": "kok_slides.json",
-        "Sindhi (سنڌي)": "sd_slides.json",
-        "Dogri (डोगरी)": "doi_slides.json",
-        "Manipuri (মণিপুরী)": "mni_slides.json",
-        "Bodo (बर')": "brx_slides.json",
-        "Sanskrit (संस्कृतम्)": "sa_slides.json"
-    }
-    file_key = lang_map.get(language, "en")
-    file_path = os.path.join("locales", f"{file_key}.json")
-    try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except FileNotFoundError:
-        try:
-             with open(os.path.join("locales", "en.json"), 'r', encoding='utf-8') as f:
-                 return json.load(f)
-        except FileNotFoundError:
-             st.error("Critical Error: Core UI translation file (en.json) missing from locales folder.")
-             return {}
 
 # --- LOCAL TRANSLATION ENGINE FOR UI ---
 @st.cache_data
