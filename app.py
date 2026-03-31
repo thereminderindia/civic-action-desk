@@ -66,6 +66,76 @@ def create_pdf(text):
     except Exception as e:
         return None
 
+
+# --- AI TRANSLATION ENGINE FOR UI ---
+@st.cache_data(show_spinner=False)
+def get_translated_ui(language):
+    base_ui = {
+        "app_settings": "🌐 App Settings",
+        "connect": "📲 Connect with TRI",
+        "tools": "🛠️ Tools",
+        "legal": "⚖️ Legal & Trust",
+        "header_title": "🏛️ Speak Up. We’ll Handle the Draft.",
+        "header_desc": "The Reminder India is your AI-powered civic assistant, bridging the gap between local problems and official solutions.",
+        "header_special": "What makes us special?",
+        "header_special_desc": "We transform simple descriptions into powerful, formal petitions instantly. Draft in your native language, attach GPS evidence, and route complaints directly to authorities via Email, WhatsApp, or X.",
+        "header_action": "Don't just complain. Demand accountability.",
+        "tutorial_expander": "📖 First time here? View the step-by-step guide",
+        "step1": "📍 Step 1: Location Details",
+        "pin": "Enter 6-Digit PIN:",
+        "town": "Confirm Town/City:",
+        "find_email": "🔍 Find Official Email",
+        "gps": "🛰️ Capture Exact GPS",
+        "evidence": "Attach Evidence (Photos/Videos):",
+        "step2": "📝 Step 2: Reporter Details",
+        "name": "Full Name (Sender):",
+        "phone": "Contact Number (Optional):",
+        "category": "Quick Issue Select (Optional):",
+        "desc": "Describe the local problem (Specific details, location, etc.):",
+        "gen_btn": "🚀 1. Generate Official Letter",
+        "step4": "📬 Step 4: Final Review & Email Controls",
+        "letter_content": "Letter Content:",
+        "email_routing": "📨 Email Routing",
+        "to": "To (Primary Official):",
+        "cc": "CC (Public Copy):",
+        "bcc": "BCC (Secret Archive):",
+        "receipt": "Your Email (For Receipt Copy):",
+        "dl_pdf": "📥 Download Print PDF",
+        "dl_txt": "📥 Download Letter",
+        "send_btn": "📧 Send Official Email Now",
+        "wa_routing": "🟢 WhatsApp Routing (Direct Message)",
+        "wa_num": "Official 10-Digit WhatsApp Number(s):",
+        "x_routing": "🐦 Public Amplification (X / Twitter)",
+        "x_handle": "Official's X Handle (e.g., @KandhlaPalika):",
+        "x_btn": "🐦 Post Summary to X (Twitter)",
+        "clear_btn": "🔄 Clear Form & Start New"
+    }
+    
+    if language == "English":
+        return base_ui
+
+    with st.spinner(f"🌐 Translating App Interface to {language}..."):
+        try:
+            sys_prompt = f"You are a professional software localization expert. Translate the values of the provided JSON object into {language}. Keep emojis intact. Return a valid JSON object."
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": sys_prompt},
+                    {"role": "user", "content": json.dumps(base_ui)}
+                ],
+                response_format={ "type": "json_object" } 
+            )
+            translated_ui = json.loads(response.choices[0].message.content)
+            
+            # Ensure all keys exist in case AI missed one
+            for key in base_ui:
+                if key not in translated_ui:
+                    translated_ui[key] = base_ui[key]
+            return translated_ui
+        except Exception as e:
+            return base_ui
+
+
 # --- AI TRANSLATION ENGINE FOR SLIDESHOW ---
 @st.cache_data(show_spinner=False)
 def get_translated_slides(language):
@@ -130,7 +200,8 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.sidebar.title("🌐 App Settings")
+# Determine global language FIRST
+st.sidebar.title("🌐 App Settings / ऐप सेटिंग्स")
 global_language = st.sidebar.selectbox("Select Language:", options=
     ["English", "Hindi (हिन्दी)", "Bengali (বাংলা)", "Marathi (मराठी)", 
      "Telugu (తెలుగు)", "Tamil (தமிழ்)", "Gujarati (ગુજરાતી)", 
@@ -140,16 +211,19 @@ global_language = st.sidebar.selectbox("Select Language:", options=
      "Nepali (नेपाली)", "Konkani (कोंकਣੀ)", "Sindhi (سنڌي)", 
      "Dogri (डोगरी)", "Manipuri (মৈতৈলোন)", "Bodo (बर')", "Sanskrit (संस्कृतम्)"])
 
+# LOAD TRANSLATED UI DICTIONARY
+ui = get_translated_ui(global_language)
+
 st.sidebar.markdown("---")
-st.sidebar.title("📲 Connect with TRI")
+st.sidebar.title(ui["connect"])
 st.sidebar.link_button("📺 YouTube", "https://youtube.com/@TheReminderIndia")
 st.sidebar.link_button("🔵 Facebook", "https://facebook.com/TheReminderIndia")
 st.sidebar.link_button("📸 Instagram", "https://instagram.com/TheReminderIndia")
 st.sidebar.markdown("---")
-st.sidebar.title("🛠️ Tools")
+st.sidebar.title(ui["tools"])
 st.sidebar.link_button("🔍 Pincode Verify", "https://www.indiapost.gov.in/VAS/Pages/findpincode.aspx")
 st.sidebar.markdown("---")
-st.sidebar.caption("⚖️ Legal & Trust")
+st.sidebar.caption(ui["legal"])
 st.sidebar.link_button("📄 Privacy Policy", "https://sites.google.com/view/httpsthereminderindia-streamli/home")
 
 pincode_df = load_pincode_db()
@@ -158,14 +232,14 @@ pincode_df = load_pincode_db()
 col_text, col_img = st.columns([6, 4], gap="large")
 
 with col_text:
-    st.markdown("""
-    <h1 style='margin-top: 0; padding-top: 0; font-size: 2.5em; color: white;'>🏛️ Speak Up. We’ll Handle the Draft.</h1>
+    st.markdown(f"""
+    <h1 style='margin-top: 0; padding-top: 0; font-size: 2.5em; color: white;'>{ui["header_title"]}</h1>
     <p style='font-size: 1.1em; color: #aaaaaa; line-height: 1.6em;'>
-        The Reminder India is your AI-powered civic assistant, bridging the gap between local problems and official solutions. 
+        {ui["header_desc"]}
         <br><br>
-        <b>What makes us special?</b> We transform simple descriptions into powerful, formal petitions instantly. Draft in your native language, attach GPS evidence, and route complaints directly to authorities via Email, WhatsApp, or X.
+        <b>{ui["header_special"]}</b> {ui["header_special_desc"]}
         <br><br>
-        <i>Don't just complain. Demand accountability.</i>
+        <i>{ui["header_action"]}</i>
     </p>
     """, unsafe_allow_html=True)
     
@@ -180,7 +254,7 @@ st.markdown("<br>", unsafe_allow_html=True)
 # --- INTERACTIVE APP TUTORIAL (SLIDESHOW) ---
 st.markdown("---")
 
-with st.expander("📖 First time here? View the step-by-step guide", expanded=False):
+with st.expander(ui["tutorial_expander"], expanded=False):
     if "slide_idx" not in st.session_state:
         st.session_state.slide_idx = 0
 
@@ -220,11 +294,11 @@ with st.expander("📖 First time here? View the step-by-step guide", expanded=F
 
 # 4. STEP 1: LOCATION DETAILS
 st.markdown("---")
-st.subheader("📍 Step 1: Location Details")
+st.subheader(ui["step1"])
 pin_col, details_col = st.columns([2, 4])
 
 with pin_col:
-    user_pin = st.text_input("Enter 6-Digit PIN:", value="", max_chars=6, key=f"pin_{st.session_state.reset_counter}")
+    user_pin = st.text_input(ui["pin"], value="", max_chars=6, key=f"pin_{st.session_state.reset_counter}")
     if user_pin and (not user_pin.isdigit() or len(user_pin) != 6):
         st.error("⚠️ Pincode must be exactly 6 digits.")
 
@@ -234,13 +308,13 @@ if user_pin and len(user_pin) == 6 and pincode_df is not None:
     if not matches.empty:
         with details_col:
             office_list = matches['officename'].unique().tolist()
-            chosen_office = st.selectbox("Confirm Town/City:", office_list, key=f"office_{st.session_state.reset_counter}")
+            chosen_office = st.selectbox(ui["town"], office_list, key=f"office_{st.session_state.reset_counter}")
             row = matches[matches['officename'] == chosen_office].iloc[0]
             selected_loc = {"Town": row['officename'], "District": row['district'], "State": row['circlename'], "PIN": user_pin}
             st.success(f"✅ Area: {selected_loc['Town']}, {selected_loc['District']}")
             
             st.sidebar.markdown("---")
-            st.sidebar.subheader("🔍 Find Official Email")
+            st.sidebar.subheader(ui["find_email"])
             search_query = f"official email municipal commissioner {selected_loc['Town']} {selected_loc['District']} site:.gov.in OR site:.nic.in"
             google_url = f"https://www.google.com/search?q={urllib.parse.quote(search_query)}"
             st.sidebar.link_button(f"🌐 Search for {selected_loc['Town']} Email", google_url)
@@ -248,7 +322,7 @@ if user_pin and len(user_pin) == 6 and pincode_df is not None:
 # --- THE BULLETPROOF MOBILE UPLOADER ---
 col_gps, col_files = st.columns(2)
 with col_gps:
-    if st.button("🛰️ Capture Exact GPS", key=f"gps_{st.session_state.reset_counter}"):
+    if st.button(ui["gps"], key=f"gps_{st.session_state.reset_counter}"):
         loc = streamlit_js_eval(data_key='pos', func_name='getCurrentPosition', want_output=True)
         if loc:
             lat, lon = loc['coords']['latitude'], loc['coords']['longitude']
@@ -256,7 +330,7 @@ with col_gps:
             st.success(f"✅ GPS Captured! Navigation Link generated.")
 
 with col_files:
-    uploaded_files = st.file_uploader("Attach Evidence (Photos/Videos):", accept_multiple_files=True, key=f"evidence_{st.session_state.reset_counter}")
+    uploaded_files = st.file_uploader(ui["evidence"], accept_multiple_files=True, key=f"evidence_{st.session_state.reset_counter}")
     st.caption("💡 Tip: Try to include a nearby landmark or street sign in your photo so officials can locate the issue faster.")
     
     if uploaded_files:
@@ -295,20 +369,20 @@ with col_files:
 
 # 5. STEP 2: REPORTER DETAILS   
 st.markdown("---")
-st.subheader("📝 Step 2: Reporter Details")
-user_name = st.text_input("Full Name (Sender):", key=f"sender_name_{st.session_state.reset_counter}")
+st.subheader(ui["step2"])
+user_name = st.text_input(ui["name"], key=f"sender_name_{st.session_state.reset_counter}")
 
-user_phone = st.text_input("Contact Number (Optional):", max_chars=10, key=f"sender_phone_{st.session_state.reset_counter}")
+user_phone = st.text_input(ui["phone"], max_chars=10, key=f"sender_phone_{st.session_state.reset_counter}")
 if user_phone:
     if not user_phone.isdigit():
         st.error("⚠️ Phone number must contain numbers only.")
     elif len(user_phone) < 10:
         st.warning("⚠️ Please enter the full 10-digit number.")
 
-issue_category = st.selectbox("Quick Issue Select (Optional):", key=f"category_{st.session_state.reset_counter}", options=
+issue_category = st.selectbox(ui["category"], key=f"category_{st.session_state.reset_counter}", options=
     ["", "Uncollected Garbage", "Broken Road / Pothole", "Clogged Drainage", "Non-functional Streetlight", "Contaminated Water", "Other"])
 
-issue_details = st.text_area("Describe the local problem (Specific details, location, etc.):", key=f"details_{st.session_state.reset_counter}")
+issue_details = st.text_area(ui["desc"], key=f"details_{st.session_state.reset_counter}")
 
 # --- SMART ISSUE COMBINATION ---
 issue_parts = []
@@ -321,7 +395,7 @@ issue = "\n\n".join(issue_parts)
 # -------------------------------
 
 # 6. STEP 3: GENERATION
-if st.button("🚀 1. Generate Official Letter", key=f"gen_{st.session_state.reset_counter}"):
+if st.button(ui["gen_btn"], key=f"gen_{st.session_state.reset_counter}"):
     if "letter" in st.session_state:
         del st.session_state["letter"]
         
@@ -391,38 +465,33 @@ if st.button("🚀 1. Generate Official Letter", key=f"gen_{st.session_state.res
 # 7. STEP 4: REVIEW & MULTI-SEND
 if "letter" in st.session_state:
     st.divider()
-    st.subheader("📬 Step 4: Final Review & Email Controls")
+    st.subheader(ui["step4"])
     
-# --- PRECISION DYNAMIC HEIGHT CALCULATION ---
     paragraphs = st.session_state.letter.split('\n')
     
     total_estimated_lines = 0
     for para in paragraphs:
         if para.strip() == "":
-            total_estimated_lines += 1  # Count blank lines between paragraphs
+            total_estimated_lines += 1 
         else:
-            # Assume a line break every 85 characters for a standard screen
             total_estimated_lines += (len(para) // 85) + 1 
 
-    # Calculate precise height: 26 pixels per line + 40px for the UI box padding
-    # Lowered the minimum height to 250 so short letters look neat
     dynamic_height = max(250, int((total_estimated_lines * 22) + 30))
 
-    st.text_area("Letter Content:", value=st.session_state.letter, height=dynamic_height, key=f"review_text_{st.session_state.reset_counter}")
-    # --------------------------------------------
+    st.text_area(ui["letter_content"], value=st.session_state.letter, height=dynamic_height, key=f"review_text_{st.session_state.reset_counter}")
         
-    st.markdown("##### 📨 Email Routing")
+    st.markdown(f"##### {ui['email_routing']}")
     col_to, col_cc = st.columns(2)
     with col_to:
-        rec_to = st.text_input("To (Primary Official):", value=st.session_state.sug_email, key=f"rec_to_{st.session_state.reset_counter}")
+        rec_to = st.text_input(ui["to"], value=st.session_state.sug_email, key=f"rec_to_{st.session_state.reset_counter}")
     with col_cc:
-        rec_cc = st.text_input("CC (Public Copy):", value="", key=f"rec_cc_{st.session_state.reset_counter}")
+        rec_cc = st.text_input(ui["cc"], value="", key=f"rec_cc_{st.session_state.reset_counter}")
         
     col_bcc, col_me = st.columns(2)
     with col_bcc:
-        rec_bcc = st.text_input("BCC (Secret Archive):", value="", key=f"rec_bcc_{st.session_state.reset_counter}")
+        rec_bcc = st.text_input(ui["bcc"], value="", key=f"rec_bcc_{st.session_state.reset_counter}")
     with col_me:
-        user_receipt = st.text_input("Your Email (For Receipt Copy):", value="", key=f"user_receipt_{st.session_state.reset_counter}")
+        user_receipt = st.text_input(ui["receipt"], value="", key=f"user_receipt_{st.session_state.reset_counter}")
 
     dispatch_log = f"\n\n{'-'*40}\nOFFICIAL DISPATCH RECORD\n{'-'*40}\n"
     dispatch_log += f"Sent To: {rec_to if rec_to else 'Pending'}\n"
@@ -441,20 +510,19 @@ if "letter" in st.session_state:
         if global_language == "English":
             pdf_bytes = create_pdf(final_download_text)
             if pdf_bytes:
-                st.download_button("📥 Download Print PDF (With Dispatch Log)", data=pdf_bytes, file_name=f"TRI_Report_{user_pin}.pdf", mime="application/pdf", key=f"dl_pdf_{st.session_state.reset_counter}")
+                st.download_button(ui["dl_pdf"], data=pdf_bytes, file_name=f"TRI_Report_{user_pin}.pdf", mime="application/pdf", key=f"dl_pdf_{st.session_state.reset_counter}")
             else:
                 st.error("Error generating PDF.")
         else:
             txt_bytes = final_download_text.encode('utf-8')
-            st.download_button("📥 Download Letter (With Dispatch Log)", data=txt_bytes, file_name=f"TRI_Report_{user_pin}.txt", mime="text/plain", key=f"dl_txt_{st.session_state.reset_counter}")
+            st.download_button(ui["dl_txt"], data=txt_bytes, file_name=f"TRI_Report_{user_pin}.txt", mime="text/plain", key=f"dl_txt_{st.session_state.reset_counter}")
         
-        # Friendly reminder for Facebook/Insta users
         st.caption("💡 **Want to post on Facebook or Instagram?** Download the letter above and attach it directly to your post!")
 
     with col_btn2:
         st.caption("By clicking send, you agree to our [Privacy Policy](https://sites.google.com/view/httpsthereminderindia-streamli/home).")
         
-        if st.button("📧 Send Official Email Now", key=f"send_email_{st.session_state.reset_counter}"):
+        if st.button(ui["send_btn"], key=f"send_email_{st.session_state.reset_counter}"):
             combined_bcc_list = []
             if rec_bcc: combined_bcc_list.append(rec_bcc)
             if user_receipt: combined_bcc_list.append(user_receipt)
@@ -510,17 +578,16 @@ if "letter" in st.session_state:
                             smtp.send_message(msg)
                             smtp.quit()
                             
-                            st.success("✅ Official Letter Sent! Please check your email (and Spam folder) for your receipt. If the issue is not resolved in 7 days, we encourage you to follow up.")
+                            st.success("✅ Official Letter Sent! Please check your email (and Spam folder) for your receipt.")
                             st.balloons()
                         except Exception as e:
                             st.error(f"Error sending email: {e}")
 
     # --- MULTI-WHATSAPP ROUTING ---
     st.markdown("---")
-    st.markdown("##### 🟢 WhatsApp Routing (Direct Message)")
-    st.caption("If you know the official WhatsApp numbers for your local departments, enter them below separated by commas (e.g., 9876543210, 8877665544).")
+    st.markdown(f"##### {ui['wa_routing']}")
     
-    wa_numbers_input = st.text_input("Official 10-Digit WhatsApp Number(s):", key=f"wa_multi_{st.session_state.reset_counter}")
+    wa_numbers_input = st.text_input(ui["wa_num"], key=f"wa_multi_{st.session_state.reset_counter}")
     
     if wa_numbers_input:
         raw_numbers = [num.strip() for num in wa_numbers_input.split(',')]
@@ -538,7 +605,6 @@ if "letter" in st.session_state:
         
         if valid_numbers:
             encoded_letter = urllib.parse.quote(st.session_state.letter)
-            st.markdown("👇 **Click each button to send via WhatsApp**")
             btn_cols = st.columns(min(len(valid_numbers), 3)) 
             
             for i, num in enumerate(valid_numbers):
@@ -546,14 +612,12 @@ if "letter" in st.session_state:
                 with btn_cols[i % 3]:
                     st.link_button(f"🟢 Send to {num}", wa_link, use_container_width=True)
 
-    # --- 💡 NEW SOCIAL MEDIA AMPLIFICATION (X / TWITTER) ---
+    # --- SOCIAL MEDIA AMPLIFICATION (X / TWITTER) ---
     st.markdown("---")
-    st.markdown("##### 🐦 Public Amplification (X / Twitter)")
-    st.caption("Public pressure works! Since X has a strict character limit, this will generate a punchy summary of your complaint so you can tag your local authorities publicly.")
+    st.markdown(f"##### {ui['x_routing']}")
     
-    tw_handle = st.text_input("Official's X Handle (e.g., @KandhlaPalika):", value="@", key=f"tw_handle_{st.session_state.reset_counter}")
+    tw_handle = st.text_input(ui["x_handle"], value="@", key=f"tw_handle_{st.session_state.reset_counter}")
     
-    # Build a short, high-impact tweet
     display_category = issue_category if issue_category else "Local Infrastructure"
     tweet_text = f"🚨 Civic Alert: {selected_loc['Town']}, PIN {selected_loc['PIN']}\n"
     tweet_text += f"Issue: {display_category}\n\n"
@@ -566,14 +630,14 @@ if "letter" in st.session_state:
     encoded_tweet = urllib.parse.quote(tweet_text)
     tw_link = f"https://twitter.com/intent/tweet?text={encoded_tweet}"
     
-    st.link_button("🐦 Post Summary to X (Twitter)", tw_link, use_container_width=True)
+    st.link_button(ui["x_btn"], tw_link, use_container_width=True)
     # ---------------------------------------
 
     st.markdown("<br><br>", unsafe_allow_html=True)
     st.markdown("---")
     col_spacer, col_clear = st.columns([3, 1])
     with col_clear:
-        if st.button("🔄 Clear Form & Start New", key=f"clear_btn_{st.session_state.reset_counter}"):
+        if st.button(ui["clear_btn"], key=f"clear_btn_{st.session_state.reset_counter}"):
             keys_to_delete = [k for k in st.session_state.keys() if k != 'reset_counter']
             for k in keys_to_delete:
                 del st.session_state[k]
