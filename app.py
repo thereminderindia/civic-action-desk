@@ -90,12 +90,12 @@ st.sidebar.link_button("📄 Privacy Policy", "https://sites.google.com/view/the
 pincode_df = load_pincode_db()
 
 # --- NEW HEADER BLOCK: NATIVE STREAMLIT LAYOUT ---
-# Create two columns: Left (Text) gets 60% width, Right (Image) gets 40% width
+# We use native columns instead of HTML flexbox to prevent the vertical text bug
 col_text, col_img = st.columns([6, 4], gap="large")
 
 with col_text:
     st.markdown("""
-    <h1 style='margin-top: 0; padding-top: 0; font-size: 2.5em;'>🏛️ Speak Up. We’ll Handle the Draft.</h1>
+    <h1 style='margin-top: 0; padding-top: 0; font-size: 2.5em; color: white;'>🏛️ Speak Up. We’ll Handle the Draft.</h1>
     <p style='font-size: 1.1em; color: #aaaaaa; line-height: 1.6em;'>
         The Reminder India is your AI-powered civic assistant, bridging the gap between local problems and official solutions. 
         <br><br>
@@ -106,11 +106,12 @@ with col_text:
     """, unsafe_allow_html=True)
     
 with col_img:
-    # Native Streamlit image handling is much safer and automatically responsive
+    import os
     if os.path.exists("banner.jpg"):
+        # This native Streamlit function automatically sizes the image perfectly
         st.image("banner.jpg", use_container_width=True)
     else:
-        st.info("Banner image not found. Please ensure 'banner.jpg' is in the repository.")
+        st.info("Banner image not found. Please ensure 'banner.jpg' is uploaded to your repository.")
         
 st.markdown("<br>", unsafe_allow_html=True)
 # --- END OF NEW HEADER BLOCK ---
