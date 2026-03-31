@@ -310,18 +310,24 @@ if "letter" in st.session_state:
     st.divider()
     st.subheader("📬 Step 4: Final Review & Email Controls")
     
-    # --- DYNAMIC HEIGHT CALCULATION ---
-    # Count actual line breaks
-    lines_by_newline = st.session_state.letter.count('\n') + 1
-    # Estimate wrapped lines (roughly 80 characters per line on a standard screen)
-    lines_by_length = len(st.session_state.letter) // 80 
-    # Use whichever is larger to ensure nothing gets cut off
-    total_estimated_lines = max(lines_by_newline, lines_by_length)
+# --- UPGRADED DYNAMIC HEIGHT CALCULATION ---
+    # Split the letter into individual paragraphs/lines
+    paragraphs = st.session_state.letter.split('\n')
     
-    # Calculate height: ~25 pixels per line, with a minimum height of 300px
-    dynamic_height = max(300, total_estimated_lines * 25)
+    total_estimated_lines = 0
+    for para in paragraphs:
+        # For every 60 characters, assume it wraps to a new line (safer for mobile/narrow screens)
+        # We add 1 to ensure even short lines count as at least 1 full line
+        lines_in_para = (len(para) // 60) + 1 
+        total_estimated_lines += lines_in_para
+
+    # Calculate height: 
+    # - 35 pixels per line (accommodates taller Hindi/native script characters)
+    # - Plus 70 pixels of extra padding for the Streamlit text box UI framing
+    dynamic_height = max(300, (total_estimated_lines * 35) + 70)
 
     st.text_area("Letter Content:", value=st.session_state.letter, height=dynamic_height, key=f"review_text_{st.session_state.reset_counter}")
+    # -------------------------------------------
         
     st.markdown("##### 📨 Email Routing")
     col_to, col_cc = st.columns(2)
