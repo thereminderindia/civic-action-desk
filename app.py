@@ -101,9 +101,9 @@ banner_base64 = get_base64_of_bin_file("banner.jpg")
 
 if banner_base64:
     header_banner_html = f"""
-    <div style="margin-bottom: 2em; text-align: center;">
+    <div style="margin-bottom: 2em; text-align: center; width: 100%;">
         <img src="data:image/jpeg;base64,{banner_base64}" 
-             style="width: 100%; height: 100%; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); border: 2px solid #ffffff;">
+             style="max-width: 100%; max-height: 35vh; object-fit: contain; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); border: 2px solid #ffffff;">
     </div>
     """
 else:
