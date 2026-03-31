@@ -116,14 +116,125 @@ with col_img:
 st.markdown("<br>", unsafe_allow_html=True)
 # --- END OF NEW HEADER BLOCK ---
 
-# --- 🎥 NEW: VIDEO TUTORIAL EXPANDER ---
-with st.expander("🎥 New here? Watch how to use this platform", expanded=False):
-    # Streamlit will automatically find and play the local file from your GitHub repo
-    try:
-        st.video("promo_video.mp4")
-        st.caption("A quick guide to generating and sending your official civic complaint.")
-    except Exception as e:
-        st.error("Video is currently unavailable.")
+# --- INTERACTIVE APP TUTORIAL (SLIDESHOW) ---
+st.markdown("---")
+
+with st.expander("📖 First time here? View the step-by-step guide", expanded=False):
+    # Initialize the slide counter in session state
+    if "slide_idx" not in st.session_state:
+        st.session_state.slide_idx = 0
+
+    # The complete 14-step tutorial array
+    tutorial_slides = [
+        {
+            "image": "1st.png", 
+            "title": "Welcome to The Reminder India", 
+            "text": "Welcome to the ultimate civic action tool. Getting started is easy: just open your browser on any device and visit thereminderindia.streamlit.app. No downloads required. Let's draft your first official complaint!"
+        },
+        {
+            "image": "2.png", 
+            "title": "Step 1: Speak Your Language", 
+            "text": "We believe you shouldn't need to be fluent in formal English to demand action. Click the 'Select Letter Language' dropdown. Choose from Hindi, Bengali, Tamil, Marathi, and over a dozen other native languages. Our AI will automatically translate and format your letter perfectly."
+        },
+        {
+            "image": "3.png", 
+            "title": "Step 1: Enter Your PIN", 
+            "text": "Type in the 6-digit PIN code of the area where the problem is located. The system will automatically search our national post office database to find the relevant local authorities."
+        },
+        {
+            "image": "4.png", 
+            "title": "Step 1: Target the Exact Municipality", 
+            "text": "Select the exact Town/City from the 'Confirm' dropdown. This step is crucial to ensure your final letter is addressed to the correct local municipal commissioner."
+        },
+        {
+            "image": "6.png", 
+            "title": "Step 1: Lock in the Coordinates", 
+            "text": "Once you see the green confirmation box, your location is set! \n\n**Pro Tip:** Standing right next to the pothole or broken streetlight? Click 'Capture Exact GPS' on your mobile device to attach a Google Maps link directly inside your complaint letter."
+        },
+        {
+            "image": "7.png", 
+            "title": "Step 1: Show, Don't Just Tell", 
+            "text": "Words are good, but pictures demand action. Use the 'Attach Evidence' box to upload photos or short video clips of the issue (up to 20MB). These files will be securely attached to the final email sent to the authorities."
+        },
+        {
+            "image": "8.png", 
+            "title": "Step 2: Reporter Details", 
+            "text": "Now, tell us who is sending the letter. Enter your Full Name so the petition can be formally signed. Your Contact Number is optional, but highly recommended so officials can reach you directly if they need more details about the issue."
+        },
+        {
+            "image": "9.png", 
+            "title": "Step 2: Categorize the Problem", 
+            "text": "Use the 'Quick Issue Select' dropdown to categorize the problem. Options include Uncollected Garbage, Broken Roads, Clogged Drainage, and more. Don't see your specific issue? Just select 'Other' or leave it blank—our AI is smart enough to figure it out from your description!"
+        },
+        {
+            "image": "10.png", 
+            "title": "Step 2: Describe the Issue Naturally", 
+            "text": "This is where the magic happens. You don't need to write a formal letter here. Just type out the specific details naturally. Tell the AI exactly where the problem is (like nearby landmarks). When you're ready, click 'Generate Official Letter' and watch the AI instantly turn your simple text into a powerful, formal petition!"
+        },
+        {
+            "image": "11.png", 
+            "title": "Step 4: Review Your Formal Petition", 
+            "text": "Within seconds, your simple description is transformed into a highly professional, fully formatted civic petition. Notice how the AI automatically includes the correct date, a strong subject line, formal salutations, and weaves your specific landmarks directly into the text. Need to make a tweak? You can type directly into the box to edit it before sending!"
+        },
+        {
+            "image": "12.png", 
+            "title": "Step 4: Route & Dispatch Your Complaint", 
+            "text": "We don't just write the letter; we deliver it. The AI will attempt to suggest the official's email automatically, but you can paste the exact To, CC, and BCC addresses here. Enter your own email to get a receipt copy! \n\nClick 'Send Official Email Now' to dispatch it instantly via our secure servers, OR click 'Download Print PDF' if you want a physical copy."
+        },
+        {
+            "image": "13.png", 
+            "title": "Direct WhatsApp Routing", 
+            "text": "Many modern municipal departments now use WhatsApp for grievance redressal. Simply type in the 10-digit official WhatsApp number. Click the generated green button, and your entire formal letter will be instantly copied into your personal WhatsApp app, ready to send directly to the official!"
+        },
+        {
+            "image": "14.png", 
+            "title": "Public Amplification on X (Twitter)", 
+            "text": "Sometimes, public visibility is the fastest way to get things fixed. Enter the official X/Twitter handle of your local authority. Click the button, and the app will generate a punchy, character-limit-friendly summary of your issue, complete with hashtags, ready for you to post and apply public pressure."
+        },
+        {
+            "image": "16.png", 
+            "title": "Your Toolkit & Starting Fresh", 
+            "text": "Look at the left sidebar at any time for helpful tools. Don't know the official's email? Click the search link to automatically run a targeted Google search for government contacts in your area. \n\nDone with your complaint? Hit the blue 'Clear Form & Start New' button at the bottom of the page to securely wipe your data and start a brand new report!"
+        }
+    ]
+
+    # Create a clean layout for the slideshow
+    slide_container = st.container(border=True)
+    current_slide = tutorial_slides[st.session_state.slide_idx]
+
+    with slide_container:
+        # Layout: Image on the left, text on the right
+        col_img, col_text = st.columns([1.2, 1], gap="large")
+        
+        with col_img:
+            import os
+            # Ensure the image exists before trying to load it to prevent app crashes
+            if os.path.exists(current_slide["image"]):
+                st.image(current_slide["image"], use_container_width=True)
+            else:
+                st.warning(f"⚠️ Missing image: {current_slide['image']}. Please ensure this exact file name is uploaded to your GitHub repository.")
+                
+        with col_text:
+            st.markdown(f"<h3 style='margin-top:0;'>{current_slide['title']}</h3>", unsafe_allow_html=True)
+            st.write(current_slide["text"])
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.caption(f"**Step {st.session_state.slide_idx + 1} of {len(tutorial_slides)}**")
+
+        # Navigation Buttons (Placed neatly at the bottom right)
+        st.markdown("<hr style='margin: 1em 0;'>", unsafe_allow_html=True)
+        nav_spacer, nav_prev, nav_next = st.columns([4, 1, 1])
+        
+        with nav_prev:
+            if st.button("⬅️ Back", disabled=(st.session_state.slide_idx == 0), use_container_width=True):
+                st.session_state.slide_idx -= 1
+                st.rerun()
+                
+        with nav_next:
+            if st.button("Next ➡️", disabled=(st.session_state.slide_idx == len(tutorial_slides) - 1), use_container_width=True):
+                st.session_state.slide_idx += 1
+                st.rerun()
+# --------------------------------------------
 
 # 4. STEP 1: LANGUAGE & LOCATION
 st.markdown("---")
