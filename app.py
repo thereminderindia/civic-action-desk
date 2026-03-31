@@ -450,13 +450,20 @@ if user_pin and len(user_pin) == 6 and pincode_df is not None:
             chosen_office = st.selectbox(ui.get("town", "Town"), office_list, key=f"office_{st.session_state.reset_counter}")
             row = matches[matches['officename'] == chosen_office].iloc[0]
             
-            # --- NEW: SCRUB POST OFFICE JARGON (BO, SO, HO) ---
+            # --- SCRUB POST OFFICE JARGON (BO, SO, HO) ---
             raw_town = str(row['officename'])
-            # This uses regular expressions to find "BO", "SO", or "HO" as standalone words and removes them
             clean_town = re.sub(r'\b(BO|SO|HO)\b', '', raw_town, flags=re.IGNORECASE).strip()
-            # --------------------------------------------------
             
-            selected_loc = {"Town": clean_town, "District": row['district'], "State": row['circlename'], "PIN": user_pin}
+            # --- SCRUB 'Circle' FROM STATE NAME ---
+            raw_state = str(row['circlename'])
+            clean_state = re.sub(r'\bCircle\b', '', raw_state, flags=re.IGNORECASE).strip()
+            
+            selected_loc = {
+                "Town": clean_town, 
+                "District": row['district'], 
+                "State": clean_state, 
+                "PIN": user_pin
+            }
             st.success(f"✅ Area: {selected_loc['Town']}, {selected_loc['District']}")
 
 col_gps, col_files = st.columns(2)
