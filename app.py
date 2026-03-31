@@ -106,6 +106,9 @@ def get_translated_ui(language):
         "step4": "📬 Step 4: Final Review & Email Controls",
         "letter_content": "Letter Content:",
         "email_routing": "📨 Email Routing",
+        "letter_content": "Letter Content:",
+        "email_routing": "📨 Email Routing",
+        "email_missing_warning": "⚠️ We couldn't auto-find the official email for this location. Please enter it manually or use the '🔍 Find Official Email' tool in the left sidebar to search Google!",
         "to": "To (Primary Official):",
         "cc": "CC (Public Copy):",
         "bcc": "BCC (Secret Archive):",
@@ -491,7 +494,13 @@ if "letter" in st.session_state:
             st.session_state.letter = edited_letter
             st.rerun()
             
-    st.markdown("##### " + ui['email_routing'])
+    st.markdown(f"##### {ui['email_routing']}")
+    
+    # --- NEW: AUTO-DETECT MISSING EMAIL ---
+    if not st.session_state.sug_email:
+        st.warning(ui["email_missing_warning"])
+    # --------------------------------------
+
     col_to, col_cc = st.columns(2)
     with col_to:
         rec_to = st.text_input(ui["to"], value=st.session_state.sug_email, key=f"rec_to_{st.session_state.reset_counter}")
