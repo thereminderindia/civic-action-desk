@@ -404,10 +404,6 @@ app_titles = {
     "Sanskrit (संस्कृतम्)": "द रिमाइंडर इंडिया"
 }
 
-# Pull the correct title, defaulting to English if the language isn't in the list above
-display_title = app_titles.get(global_language, "The Reminder India")
-st.title(display_title)
-
 # --- HEADER BLOCK ---
 # Create a cached function so it only checks Google Sheets every 10 minutes (saves load time)
 @st.cache_data(ttl=600)
