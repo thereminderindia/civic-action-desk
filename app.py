@@ -529,26 +529,31 @@ issue_category = st.selectbox(ui.get("category", "Category"), key=f"category_{st
 
 issue_details = st.text_area(ui.get("desc", "Description"), key=f"details_{st.session_state.reset_counter}")
 
-if selected_loc:
-    dept_keywords = "Municipal Commissioner OR Nagar Palika"
-    if issue_category == "Uncollected Garbage":
-        dept_keywords = "Nagar Nigam OR Municipal Corporation Sanitation"
-    elif issue_category == "Broken Road / Pothole":
-        dept_keywords = "PWD Executive Engineer OR Municipal Corporation"
-    elif issue_category == "Clogged Drainage":
-        dept_keywords = "Sanitary Inspector OR Nagar Nigam"
-    elif issue_category == "Non-functional Streetlight":
-        dept_keywords = "Electricity Department OR Junior Engineer JE"
-    elif issue_category == "Contaminated Water":
-        dept_keywords = "Water Supply Department OR Jal Board"
-
-    search_query = f"official email {dept_keywords} {selected_loc['Town']} {selected_loc['District']} site:.gov.in OR site:.nic.in"
-    google_url = f"(https://www.google.com/search?q=){urllib.parse.quote(search_query)}"
+with search_container:
+    st.markdown("---")
+    st.subheader(ui.get("find_email", "Find Email"))
     
-    with search_container:
-        st.markdown("---")
-        st.subheader(ui.get("find_email", "Find Email"))
+    if selected_loc:
+        dept_keywords = "Municipal Commissioner OR Nagar Palika"
+        if issue_category == "Uncollected Garbage":
+            dept_keywords = "Nagar Nigam OR Municipal Corporation Sanitation"
+        elif issue_category == "Broken Road / Pothole":
+            dept_keywords = "PWD Executive Engineer OR Municipal Corporation"
+        elif issue_category == "Clogged Drainage":
+            dept_keywords = "Sanitary Inspector OR Nagar Nigam"
+        elif issue_category == "Non-functional Streetlight":
+            dept_keywords = "Electricity Department OR Junior Engineer JE"
+        elif issue_category == "Contaminated Water":
+            dept_keywords = "Water Supply Department OR Jal Board"
+
+        search_query = f"official email {dept_keywords} {selected_loc['Town']} {selected_loc['District']} site:.gov.in OR site:.nic.in"
+        # Switched to quote_plus for safer Google Search URLs
+        google_url = f"https://www.google.com/search?q={urllib.parse.quote_plus(search_query)}"
+        
         st.link_button(f"🌐 Search for {selected_loc['Town']} Email", google_url)
+    else:
+        # Shows a helpful message before they enter a PIN
+        st.caption("📍 Enter a 6-digit PIN in Step 1 to unlock the official email search tool.")
 
 issue_parts = []
 if issue_category and issue_category != "Other":
