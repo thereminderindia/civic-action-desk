@@ -644,7 +644,7 @@ else:
             del st.session_state["letter"]
             
         # 2. Check for errors FIRST (Admins still need to fill out the form!)
-        if not user_name or not selected_loc or not issue_details.strip() or len(user_pin) != 6:
+        if not user_name.strip() or not selected_loc or not issue_details.strip() or len(user_pin.strip()) != 6:
             st.error("⚠️ Please complete all fields correctly.")
         else:
             # 3. Increase the counter ONLY if there are no errors
