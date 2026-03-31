@@ -181,7 +181,7 @@ def generate_official_letter(user_details, issue_description, location_info, glo
     and handles the translation formatting required by the app.
     """
     
-    # NEW: Strict translation rules based on selected language
+    # Strict translation rules based on selected language
     if global_language == "English":
         from_label = "From"
         to_label = "To"
@@ -215,7 +215,7 @@ def generate_official_letter(user_details, issue_description, location_info, glo
     FORMAT INSTRUCTIONS:
     1. Date at the top.
     2. The "From" section (Sender name and phone). You MUST use '{from_label}' as the exact label for this section.
-    3. The "To" section (Recipient title, City, District, PIN). You MUST use '{to_label}' as the exact label for this section.
+    3. The "To" section. You MUST use '{to_label}' as the exact label for this section. CRITICAL RULE: You must use the EXACT Location/Town name provided ({location_info['town']}). Do NOT simplify it or substitute it with just the District name.
     4. A clear, formal Subject line.
     5. A formal Salutation (e.g., Respected Sir/Madam).
     6. Write a full letter with 2-3 professional paragraphs explaining the issue. Include a strong 7-day resolution demand.
@@ -450,7 +450,14 @@ if user_pin and len(user_pin) == 6 and pincode_df is not None:
             office_list = matches['officename'].unique().tolist()
             chosen_office = st.selectbox(ui.get("town", "Town"), office_list, key=f"office_{st.session_state.reset_counter}")
             row = matches[matches['officename'] == chosen_office].iloc[0]
-            selected_loc = {"Town": row['officename'], "District": row['district'], "State": row['circlename'], "PIN": user_pin}
+            
+            # --- NEW: SCRUB POST OFFICE JARGON (BO, SO, HO) ---
+            raw_town = str(row['officename'])
+            # This uses regular expressions to find "BO", "SO", or "HO" as standalone words and removes them
+            clean_town = re.sub(r'\b(BO|SO|HO)\b', '', raw_town, flags=re.IGNORECASE).strip()
+            # --------------------------------------------------
+            
+            selected_loc = {"Town": clean_town, "District": row['district'], "State": row['circlename'], "PIN": user_pin}
             st.success(f"✅ Area: {selected_loc['Town']}, {selected_loc['District']}")
 
 col_gps, col_files = st.columns(2)
