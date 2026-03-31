@@ -9,9 +9,9 @@ from fpdf import FPDF
 import pandas as pd
 import re
 import mimetypes
-from datetime import datetime
 from streamlit_gsheets import GSheetsConnection
 from streamlit_js_eval import streamlit_js_eval
+from datetime import datetime, timedelta
 import urllib.parse
 import base64
 import os
@@ -769,18 +769,10 @@ if "letter" in st.session_state:
         else:
             txt_bytes = final_download_text.encode('utf-8')
             st.download_button(ui.get("dl_txt", "Download TXT"), data=txt_bytes, file_name=f"TRI_Report_{user_pin}.txt", mime="text/plain")
-        
+            
         # --- NEW: ADD TO CALENDAR BUTTON ---
         follow_up_date = (datetime.now() + timedelta(days=7)).strftime("%Y%m%d")
-        ics_content = f"""BEGIN:VCALENDAR
-VERSION:2.0
-BEGIN:VEVENT
-DTSTART:{follow_up_date}T090000Z
-DTEND:{follow_up_date}T100000Z
-SUMMARY:Follow up on TRI Civic Petition
-DESCRIPTION:Check if the Municipal Commissioner resolved the {issue_category} issue reported 7 days ago.
-END:VEVENT
-END:VCALENDAR"""
+        ics_content = f"BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\nDTSTART:{follow_up_date}T090000Z\nDTEND:{follow_up_date}T100000Z\nSUMMARY:Follow up on TRI Civic Petition\nDESCRIPTION:Check if the Municipal Commissioner resolved the {issue_category} issue reported 7 days ago.\nEND:VEVENT\nEND:VCALENDAR"
         
         st.download_button("📅 Set 7-Day Follow-Up Reminder", data=ics_content.encode('utf-8'), file_name="TRI_Reminder.ics", mime="text/calendar")
         # -----------------------------------
