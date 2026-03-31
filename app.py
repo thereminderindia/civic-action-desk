@@ -193,11 +193,16 @@ def generate_official_letter(user_details, issue_description, location_info, glo
     CRITICAL RULE: {translation_rule}
     """
     
+    # --- DYNAMIC PHONE INSTRUCTION ---
+    # If phone is blank, we explicitly tell the AI to hide the line!
+    phone_data = f"- Reporter Phone: {user_details['phone']}" if user_details['phone'].strip() else ""
+    phone_instruction = "and phone number" if user_details['phone'].strip() else "(DO NOT include a phone or contact line since none was provided)"
+
     user_prompt = f"""
     Here is the raw data for the letter:
     - Date: {current_date}
     - Reporter Name: {user_details['name']}
-    - Reporter Phone: {user_details['phone']}
+    {phone_data}
     - Recipient Title: The Municipal Commissioner
     - Exact Address Block to Use: 
       {location_info['town']}, {location_info['district'].upper()}
@@ -210,7 +215,7 @@ def generate_official_letter(user_details, issue_description, location_info, glo
 
     FORMAT INSTRUCTIONS:
     1. Date at the top.
-    2. The "From" section (Sender name and phone). You MUST use '{from_label}' as the exact label for this section.
+    2. The "From" section (Sender name {phone_instruction}). You MUST use '{from_label}' as the exact label for this section.
     3. The "To" section. You MUST use '{to_label}' as the exact label. CRITICAL RULE: You MUST format the recipient address EXACTLY as provided in the 'Exact Address Block to Use' section. Do not alter, shorten, or remove the Town, District, State, or PIN formatting.
     4. A clear, formal Subject line.
     5. A formal Salutation (e.g., Respected Sir/Madam).
