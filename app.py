@@ -579,32 +579,38 @@ with col_files:
 st.markdown("---")
 st.subheader(ui.get("step2", "Step 2"))
 
-# --- LOCAL SPOTLIGHT TEMPLATES ---
-st.caption("⚡ **Fast-Track: Select a common local issue to auto-fill the details below:**")
+# --- QUICK-ACTION TEMPLATES (ALL INDIA) ---
+st.caption("⚡ **Fast-Track: Select a common issue to auto-fill the details below:**")
 c1, c2, c3 = st.columns(3)
 
-if c1.button("🗑️ Kandhla Garbage Dump"):
-    st.session_state.auto_cat = "Uncollected Garbage"
-    st.session_state.auto_desc = "Massive garbage pile accumulation near the main market area causing severe health hazards and foul smell."
-if c2.button("💡 Eastern Yamuna Canal Lights"):
-    st.session_state.auto_cat = "Non-functional Streetlight"
-    st.session_state.auto_desc = "All streetlights along the Eastern Yamuna Canal road are completely dead, causing safety risks at night."
-if c3.button("🛣️ Main Road Potholes"):
-    st.session_state.auto_cat = "Broken Road / Pothole"
-    st.session_state.auto_desc = "Deep, dangerous potholes on the main connecting road that are damaging vehicles and causing traffic jams."
+# We grab the exact memory "keys" that Streamlit uses for these boxes
+cat_key = f"category_{st.session_state.reset_counter}"
+desc_key = f"desc_{st.session_state.reset_counter}"
 
-# Update your existing inputs to use these session state values!
+# Now the buttons directly inject generic, professional text into Streamlit's memory!
+if c1.button("💡 Light"):
+    st.session_state[cat_key] = "Non-functional Streetlight"
+    st.session_state[desc_key] = "Multiple streetlights in this locality are completely non-functional, causing severe safety and security concerns for residents commuting at night."
+    
+if c2.button("🚰 Water"):
+    st.session_state[cat_key] = "Contaminated Water"
+    st.session_state[desc_key] = "The local water supply is highly contaminated, emitting a foul odor and appearing discolored. This poses a severe health hazard to all residents in the area."
+    
+if c3.button("🛣️ Road"):
+    st.session_state[cat_key] = "Broken Road / Pothole"
+    st.session_state[desc_key] = "The main road is severely damaged with deep, dangerous potholes. It is causing frequent traffic disruptions and poses a high risk of vehicle damage and accidents for daily commuters."
+
+# The Category Dropdown
 issue_category = st.selectbox(
     ui.get("category", "Category"), 
     options=["", "Uncollected Garbage", "Broken Road / Pothole", "Clogged Drainage", "Non-functional Streetlight", "Contaminated Water", "Other"],
-    index=["", "Uncollected Garbage", "Broken Road / Pothole", "Clogged Drainage", "Non-functional Streetlight", "Contaminated Water", "Other"].index(st.session_state.get("auto_cat", "")) if st.session_state.get("auto_cat") else 0,
-    key=f"category_{st.session_state.reset_counter}"
+    key=cat_key
 )
 
-issue_details = st.text_area(
+# The Description Box
+issue = st.text_area(
     ui.get("desc", "Description"), 
-    value=st.session_state.get("auto_desc", ""),
-    key=f"details_{st.session_state.reset_counter}"
+    key=desc_key
 )
 # ----------------------------------
 
@@ -660,8 +666,8 @@ issue = "\n\n".join(issue_parts)
 st.markdown("---")
 
 # --- ADMIN BACKDOOR ---
-# If you type exactly this in the Name box, the limit disappears!
-is_admin = (user_name.strip() == "Admin TRI") 
+# The .upper() makes it ignore capitalization so ADMIN TRI always works!
+is_admin = (user_name.strip().upper() == "ADMIN TRI")
 
 # Now we check: Are they over the limit AND are they NOT an admin?
 if st.session_state.gen_count >= 3 and not is_admin:
