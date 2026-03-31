@@ -150,6 +150,17 @@ def load_pincode_db():
 # --- PDF ENGINE ---
 def create_pdf(text, language):
     try:
+        # --- NEW: SANITIZE AI TEXT FOR PDF ---
+        # Swap out fancy curly quotes and long dashes for standard keyboard characters
+        text = text.replace('\u2018', "'").replace('\u2019', "'")  # Single quotes
+        text = text.replace('\u201c', '"').replace('\u201d', '"')  # Double quotes
+        text = text.replace('\u2013', '-').replace('\u2014', '-')  # Dashes
+        
+        # Catch-all: If the AI uses any other weird symbols (like emojis), 
+        # this replaces them with a standard character so it won't crash!
+        text = text.encode('latin-1', 'replace').decode('latin-1')
+        # -------------------------------------
+
         pdf = FPDF()
         pdf.add_page()
         pdf.set_font("Arial", size=11) 
@@ -159,10 +170,8 @@ def create_pdf(text, language):
             if line.strip() == "":
                 pdf.ln(line_height)
             elif current_date in line:
-                # Fixed: Changed 'text' back to 'txt' to prevent the FPDF keyword error
                 pdf.cell(0, line_height, txt=line, ln=True, align='R')
             else:
-                # Fixed: Changed 'text' back to 'txt'
                 pdf.multi_cell(0, line_height, txt=line, align='L')
                 
         return pdf.output(dest='S').encode('latin-1', 'ignore')
