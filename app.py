@@ -191,14 +191,16 @@ with col_text:
     st.markdown(f"*{ui.get('header_action', '')}*")
     
 with col_img:
-    banner_path = os.path.join("assets", "banner.jpg")
+    # We changed the name here to force Streamlit to load it fresh!
+    banner_path = os.path.join("assets", "main_banner.png")
+    
     if os.path.exists(banner_path):
         try:
             st.image(banner_path, use_container_width=True)
         except Exception as e:
             st.error(f"Image found, but couldn't be loaded. Error: {e}")
     else:
-        st.info("Banner image not found. Please ensure it is uploaded to your 'assets' folder.")
+        st.info("Banner image not found. Please ensure 'main_banner.png' is in the 'assets' folder.")
         
 st.markdown("<br>", unsafe_allow_html=True)
 
