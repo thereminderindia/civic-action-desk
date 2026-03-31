@@ -567,21 +567,24 @@ if st.button(ui.get("gen_btn", "Generate"), key=f"gen_{st.session_state.reset_co
             # Package the user data into the requested dictionaries
             user_details_dict = {"name": user_name, "phone": p_val, "category": issue_category}
             issue_description_dict = {"text": issue}
-            location_info_dict = {"town": selected_loc['Town'], "district": selected_loc['District'], "pin": selected_loc['PIN']}
-
-            try:
-                # --- CALL THE NEW FUNCTION HERE ---
-                res_content = generate_official_letter(
-                    # Package the user data into the requested dictionaries
-            # Package the user data into the requested dictionaries
-            user_details_dict = {"name": user_name, "phone": p_val, "category": issue_category}
-            issue_description_dict = {"text": issue}
             location_info_dict = {
                 "town": selected_loc['Town'], 
                 "district": selected_loc['District'], 
                 "state": selected_loc['State'], 
                 "pin": selected_loc['PIN']
             }
+
+            try:
+                # --- CALL THE NEW FUNCTION HERE ---
+                res_content = generate_official_letter(
+                    user_details=user_details_dict, 
+                    issue_description=issue_description_dict, 
+                    location_info=location_info_dict,
+                    global_language=global_language,
+                    current_date=current_date,
+                    maps_url=maps_url,
+                    has_evidence=has_evidence
+                )
                 
                 res_content = res_content.replace("```", "").strip()
                 st.session_state.letter = res_content.split("SUGGESTED_EMAIL:")[0].strip()
