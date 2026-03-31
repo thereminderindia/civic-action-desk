@@ -86,6 +86,12 @@ def local_css():
 
 # Call the function at the start
 local_css()
+col1, col2 = st.columns([1, 4])
+with col1:
+    # Ensure your logo is actually named 'logo.png' and is inside the 'assets' folder
+    st.image("assets/logo.png", width=100)
+with col2:
+    st.title("The Reminder India")
 from openai import OpenAI
 import smtplib
 from email.mime.multipart import MIMEMultipart
@@ -180,16 +186,32 @@ def create_pdf(text, language):
 # --- LOCAL TRANSLATION ENGINE FOR UI ---
 @st.cache_data
 def get_translated_ui(language):
-    lang_map = {
-        "English": "en", "Hindi (हिन्दी)": "hi", "Bengali (বাংলা)": "bn",
-        "Marathi (मराठी)": "mr", "Telugu (తెలుగు)": "te", "Tamil (தமிழ்)": "ta",
-        "Gujarati (ગુજરાતી)": "gu", "Urdu (اردو)": "ur", "Kannada (ಕನ್ನಡ)": "kn",
-        "Odia (ଓଡ଼ିଆ)": "or", "Malayalam (മലയാളം)": "ml", "Punjabi (ਪੰਜਾਬੀ)": "pa",
-        "Assamese (অসমীয়া)": "as", "Maithili (मैथिली)": "mai", "Santali (संताली)": "sat",
-        "Kashmiri (کٲशُر)": "ks", "Nepali (नेपाली)": "ne", "Konkani (कोंकणी)": "kok",
-        "Sindhi (سنڌي)": "sd", "Dogri (डोगरी)": "doi", "Manipuri (মৈতৈলোন)": "mni",
-        "Bodo (बर')": "brx", "Sanskrit (संस्कृतम्)": "sa"
-    }
+    # Ensure these keys match the names in your st.selectbox exactly!
+lang_map = {
+    "English": "en_slides.json",
+    "Hindi (हिन्दी)": "hi_slides.json",
+    "Bengali (বাংলা)": "bn_slides.json",
+    "Marathi (मराठी)": "mr_slides.json",
+    "Telugu (తెలుగు)": "te_slides.json",
+    "Tamil (தமிழ்)": "ta_slides.json",
+    "Gujarati (ગુજરાતી)": "gu_slides.json",
+    "Urdu (اردو)": "ur_slides.json",
+    "Kannada (ಕನ್ನಡ)": "kn_slides.json",
+    "Odia (ଓଡ଼ିଆ)": "or_slides.json",
+    "Malayalam (മലയാളം)": "ml_slides.json",
+    "Punjabi (ਪੰਜਾਬੀ)": "pa_slides.json",
+    "Assamese (অসমীয়া)": "as_slides.json",
+    "Maithili (मैथिली)": "mai_slides.json",
+    "Santali (संताली)": "sat_slides.json",
+    "Kashmiri (کأشُر)": "ks_slides.json",
+    "Nepali (नेपाली)": "ne_slides.json",
+    "Konkani (कोंकणी)": "kok_slides.json",
+    "Sindhi (سنڌي)": "sd_slides.json",
+    "Dogri (डोगरी)": "doi_slides.json",
+    "Manipuri (মণিপুরী)": "mni_slides.json",
+    "Bodo (बर')": "brx_slides.json",
+    "Sanskrit (संस्कृतम्)": "sa_slides.json"
+}
     file_key = lang_map.get(language, "en")
     
     file_path = os.path.join("locales", f"{file_key}.json")
@@ -208,16 +230,32 @@ def get_translated_ui(language):
 # --- LOCAL TRANSLATION ENGINE FOR SLIDESHOW ---
 @st.cache_data
 def get_translated_slides(language):
-    lang_map = {
-        "English": "en_slides", "Hindi (हिन्दी)": "hi_slides", "Bengali (বাংলা)": "bn_slides",
-        "Marathi (मराठी)": "mr_slides", "Telugu (తెలుగు)": "te_slides", "Tamil (தமிழ்)": "ta_slides",
-        "Gujarati (ગુજરાતી)": "gu_slides", "Urdu (اردو)": "ur_slides", "Kannada (ಕನ್ನಡ)": "kn_slides",
-        "Odia (ଓଡ଼ିଆ)": "or_slides", "Malayalam (മലയാളം)": "ml_slides", "Punjabi (ਪੰਜਾਬੀ)": "pa_slides",
-        "Assamese (অসমীয়া)": "as_slides", "Maithili (मैथिली)": "mai_slides", "Santali (संताली)": "sat_slides",
-        "Kashmiri (کٲशُر)": "ks_slides", "Nepali (नेपाली)": "ne_slides", "Konkani (कोंकणी)": "kok_slides",
-        "Sindhi (سنڌي)": "sd_slides", "Dogri (डोगरी)": "doi_slides", "Manipuri (মৈতৈলোন)": "mni_slides",
-        "Bodo (बर')": "brx_slides", "Sanskrit (संस्कृतम्)": "sa_slides"
-    }
+    # Ensure these keys match the names in your st.selectbox exactly!
+lang_map = {
+    "English": "en_slides.json",
+    "Hindi (हिन्दी)": "hi_slides.json",
+    "Bengali (বাংলা)": "bn_slides.json",
+    "Marathi (मराठी)": "mr_slides.json",
+    "Telugu (తెలుగు)": "te_slides.json",
+    "Tamil (தமிழ்)": "ta_slides.json",
+    "Gujarati (ગુજરાતી)": "gu_slides.json",
+    "Urdu (اردو)": "ur_slides.json",
+    "Kannada (ಕನ್ನಡ)": "kn_slides.json",
+    "Odia (ଓଡ଼ିଆ)": "or_slides.json",
+    "Malayalam (മലയാളം)": "ml_slides.json",
+    "Punjabi (ਪੰਜਾਬੀ)": "pa_slides.json",
+    "Assamese (অসমীয়া)": "as_slides.json",
+    "Maithili (मैथिली)": "mai_slides.json",
+    "Santali (संताली)": "sat_slides.json",
+    "Kashmiri (کأشُر)": "ks_slides.json",
+    "Nepali (नेपाली)": "ne_slides.json",
+    "Konkani (कोंकणी)": "kok_slides.json",
+    "Sindhi (سنڌي)": "sd_slides.json",
+    "Dogri (डोगरी)": "doi_slides.json",
+    "Manipuri (মণিপুরী)": "mni_slides.json",
+    "Bodo (बर')": "brx_slides.json",
+    "Sanskrit (संस्कृतम्)": "sa_slides.json"
+}
     file_key = lang_map.get(language, "en_slides")
     
     file_path = os.path.join("locales", f"{file_key}.json")
@@ -247,7 +285,7 @@ logo_path = os.path.join("assets", "logo.jpg")
 if os.path.exists(logo_path):
     try:
         # Putting it in the sidebar looks very official!
-        st.sidebar.image(logo_path, use_container_width=True)
+        st.sidebar.image("assets/logo.png", use_container_width=True)
     except Exception as e:
         st.sidebar.error(f"Logo error: {e}")
 # ----------------------
