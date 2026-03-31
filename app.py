@@ -334,16 +334,6 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- NEW LOGO BLOCK ---
-logo_path = os.path.join("assets", "logo.jpg")
-if os.path.exists(logo_path):
-    try:
-        # Putting it in the sidebar looks very official!
-        st.sidebar.image("assets/logo.png", use_container_width=True)
-    except Exception as e:
-        st.sidebar.error(f"Logo error: {e}")
-# ----------------------
-
 st.sidebar.subheader("🌐 App Settings / ऐप सेटिंग्स")
 global_language = st.sidebar.selectbox("Select Language:", options=
     ["English", "Hindi (हिन्दी)", "Bengali (বাংলা)", "Marathi (मराठी)", 
