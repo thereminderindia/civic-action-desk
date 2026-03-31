@@ -151,32 +151,25 @@ FONT_MAP = {
     # Add your other downloaded fonts here...
     "English": "NotoSans-Regular.ttf"
 }
-
+# --- PDF ENGINE ---
 def create_pdf(text, language):
     try:
         pdf = FPDF()
         pdf.add_page()
-        
-        font_filename = FONT_MAP.get(language, "NotoSans-Regular.ttf")
-        font_path = os.path.join("assets", font_filename)
-        font_family_name = font_filename.split("-")[0].split("_")[0]
-        
-        if os.path.exists(font_path):
-            pdf.add_font(font_family_name, style="", fname=font_path)
-            pdf.set_font(font_family_name, size=11)
-        else:
-            pdf.set_font("Helvetica", size=11) 
+        pdf.set_font("Arial", size=11) 
             
         line_height = 6
         for line in text.split('\n'):
             if line.strip() == "":
                 pdf.ln(line_height)
             elif current_date in line:
-                pdf.cell(0, line_height, text=line, new_x="LMARGIN", new_y="NEXT", align='R')
+                # Fixed: Changed 'text' back to 'txt' to prevent the FPDF keyword error
+                pdf.cell(0, line_height, txt=line, ln=True, align='R')
             else:
-                pdf.multi_cell(0, line_height, text=line, align='L')
+                # Fixed: Changed 'text' back to 'txt'
+                pdf.multi_cell(0, line_height, txt=line, align='L')
                 
-        return bytes(pdf.output()) 
+        return pdf.output(dest='S').encode('latin-1', 'ignore')
     except Exception as e:
         st.error(f"PDF Generation Error: {e}")
         return None
@@ -187,15 +180,23 @@ def generate_official_letter(user_details, issue_description, location_info, glo
     Wraps the OpenAI call using the Senior Civic Advocate persona, user dictionaries, 
     and handles the translation formatting required by the app.
     """
-    from_label = "प्रेषक" if "Hindi" in global_language else f"the translation of 'From' in {global_language}"
-    to_label = "सेवा में" if "Hindi" in global_language else f"the translation of 'To' in {global_language}"
+    
+    # NEW: Strict translation rules based on selected language
+    if global_language == "English":
+        from_label = "From"
+        to_label = "To"
+        translation_rule = "The entire letter MUST be in English. You MUST translate ANY regional language inputs (like Hindi names, locations, or descriptions) into English."
+    else:
+        from_label = "प्रेषक" if "Hindi" in global_language else f"the translation of 'From' in {global_language}"
+        to_label = "सेवा में" if "Hindi" in global_language else f"the translation of 'To' in {global_language}"
+        translation_rule = f"The entire letter MUST be in {global_language}. You MUST translate or transliterate ALL English/regional names, dates, cities, and structural elements into the native script of {global_language}."
 
     # This is the "Voice" of the app
     system_prompt = f"""
     You are a Senior Civic Advocate in India. Draft a formal petition to the Municipal Commissioner regarding a public grievance. 
     Use a professional, firm, and legalistic tone.
     
-    CRITICAL RULE: You MUST translate or transliterate ALL English names, dates, cities, and structural elements into the native script of {global_language}. Do not leave any English words unless {global_language} is English.
+    CRITICAL RULE: {translation_rule}
     """
     
     # This is the "Data" from the user mapped to formatting rules
@@ -211,7 +212,7 @@ def generate_official_letter(user_details, issue_description, location_info, glo
     - GPS Link Available: {maps_url}
     - Evidence Attached: {'Yes' if has_evidence else 'No'}
 
-    FORMAT INSTRUCTIONS (Generate everything below in {global_language}):
+    FORMAT INSTRUCTIONS:
     1. Date at the top.
     2. The "From" section (Sender name and phone). You MUST use '{from_label}' as the exact label for this section.
     3. The "To" section (Recipient title, City, District, PIN). You MUST use '{to_label}' as the exact label for this section.
