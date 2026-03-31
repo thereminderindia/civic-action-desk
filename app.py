@@ -181,20 +181,24 @@ st.sidebar.link_button("📄 Privacy Policy", "https://sites.google.com/view/htt
 
 pincode_df = load_pincode_db()
 
-# --- HEADER BLOCK (Fixed HTML Issue) ---
+# --- HEADER BLOCK ---
 col_text, col_img = st.columns([6, 4], gap="large")
 
 with col_text:
-    st.markdown(f"## {ui['header_title']}")
-    st.markdown(f"{ui['header_desc']}")
-    st.markdown(f"**{ui['header_special']}** {ui['header_special_desc']}")
-    st.markdown(f"*{ui['header_action']}*")
-    
+    st.markdown(f"## {ui.get('header_title', '')}")
+    st.markdown(f"{ui.get('header_desc', '')}")
+    st.markdown(f"**{ui.get('header_special', '')}** {ui.get('header_special_desc', '')}")
+    st.markdown(f"*{ui.get('header_action', '')}*")
+    
 with col_img:
-    if os.path.exists("banner.jpg"):
-        st.image("banner.jpg", use_container_width=True)
-    else:
-        st.info("Banner image not found. Please ensure 'banner.jpg' is uploaded to your repository.")
+    banner_path = os.path.join("assets", "banner.jpg")
+    if os.path.exists(banner_path):
+        try:
+            st.image(banner_path, use_container_width=True)
+        except Exception as e:
+            st.error(f"Image found, but couldn't be loaded. Error: {e}")
+    else:
+        st.info("Banner image not found. Please ensure it is uploaded to your 'assets' folder.")
         
 st.markdown("<br>", unsafe_allow_html=True)
 
