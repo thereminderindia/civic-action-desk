@@ -106,8 +106,6 @@ def get_translated_ui(language):
         "step4": "📬 Step 4: Final Review & Email Controls",
         "letter_content": "Letter Content:",
         "email_routing": "📨 Email Routing",
-        "letter_content": "Letter Content:",
-        "email_routing": "📨 Email Routing",
         "email_missing_warning": "⚠️ We couldn't auto-find the official email for this location. Please enter it manually or use the '🔍 Find Official Email' tool in the left sidebar to search Google!",
         "to": "To (Primary Official):",
         "cc": "CC (Public Copy):",
@@ -206,10 +204,23 @@ def get_translated_slides(language):
 # 3. INTERFACE & SIDEBAR
 st.set_page_config(page_title="The Reminder India", page_icon="🏛️", layout="wide")
 
+# --- CUSTOM CSS FOR SIDEBAR COMPACTION & HIDING INPUT INSTRUCTIONS ---
 st.markdown("""
     <style>
         div[data-testid="InputInstructions"] {
             display: none !important;
+        }
+        /* Drastically reduce vertical spacing in the Sidebar */
+        section[data-testid="stSidebar"] div.stVerticalBlock {
+            gap: 0.2rem !important;
+        }
+        section[data-testid="stSidebar"] hr {
+            margin-top: 0.5rem !important;
+            margin-bottom: 0.5rem !important;
+        }
+        section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] h3 {
+            padding-top: 0.2rem !important;
+            padding-bottom: 0.2rem !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -233,6 +244,13 @@ st.sidebar.title(ui["connect"])
 st.sidebar.link_button("📺 YouTube", "https://youtube.com/@TheReminderIndia")
 st.sidebar.link_button("🔵 Facebook", "https://facebook.com/TheReminderIndia")
 st.sidebar.link_button("📸 Instagram", "https://instagram.com/TheReminderIndia")
+
+# --- NEW: DYNAMIC SEARCH CONTAINER PLACED HERE ---
+# By creating a container here, we reserve this exact spot in the sidebar. 
+# We will populate it with the search button later in the code after the user has selected their location and issue!
+search_container = st.sidebar.container()
+# ------------------------------------------------
+
 st.sidebar.markdown("---")
 st.sidebar.title(ui["tools"])
 st.sidebar.link_button("🔍 Pincode Verify", "https://www.indiapost.gov.in/VAS/Pages/findpincode.aspx")
@@ -328,12 +346,6 @@ if user_pin and len(user_pin) == 6 and pincode_df is not None:
             row = matches[matches['officename'] == chosen_office].iloc[0]
             selected_loc = {"Town": row['officename'], "District": row['district'], "State": row['circlename'], "PIN": user_pin}
             st.success(f"✅ Area: {selected_loc['Town']}, {selected_loc['District']}")
-            
-            st.sidebar.markdown("---")
-            st.sidebar.subheader(ui["find_email"])
-            search_query = f"official email municipal commissioner {selected_loc['Town']} {selected_loc['District']} site:.gov.in OR site:.nic.in"
-            google_url = f"https://www.google.com/search?q={urllib.parse.quote(search_query)}"
-            st.sidebar.link_button(f"🌐 Search for {selected_loc['Town']} Email", google_url)
 
 # --- THE BULLETPROOF MOBILE UPLOADER ---
 col_gps, col_files = st.columns(2)
@@ -399,6 +411,36 @@ issue_category = st.selectbox(ui["category"], key=f"category_{st.session_state.r
     ["", "Uncollected Garbage", "Broken Road / Pothole", "Clogged Drainage", "Non-functional Streetlight", "Contaminated Water", "Other"])
 
 issue_details = st.text_area(ui["desc"], key=f"details_{st.session_state.reset_counter}")
+
+
+# --- POPULATE THE DYNAMIC SIDEBAR SEARCH CONTAINER ---
+# Now that we know BOTH the Location (Step 1) and the Issue Category (Step 2),
+# we can safely populate the sidebar container we created earlier!
+if selected_loc:
+    # 1. Determine the right department keywords based on the user's selected issue
+    dept_keywords = "Municipal Commissioner OR Nagar Palika"
+    if issue_category == "Uncollected Garbage":
+        dept_keywords = "Nagar Nigam OR Municipal Corporation Sanitation"
+    elif issue_category == "Broken Road / Pothole":
+        dept_keywords = "PWD Executive Engineer OR Municipal Corporation"
+    elif issue_category == "Clogged Drainage":
+        dept_keywords = "Sanitary Inspector OR Nagar Nigam"
+    elif issue_category == "Non-functional Streetlight":
+        dept_keywords = "Electricity Department OR Junior Engineer JE"
+    elif issue_category == "Contaminated Water":
+        dept_keywords = "Water Supply Department OR Jal Board"
+
+    # 2. Build the highly targeted Google search URL
+    search_query = f"official email {dept_keywords} {selected_loc['Town']} {selected_loc['District']} site:.gov.in OR site:.nic.in"
+    google_url = f"https://www.google.com/search?q={urllib.parse.quote(search_query)}"
+    
+    # 3. Inject it into the sidebar container we reserved
+    with search_container:
+        st.markdown("---")
+        st.subheader(ui["find_email"])
+        st.link_button(f"🌐 Search for {selected_loc['Town']} Email", google_url)
+# -----------------------------------------------------
+
 
 # --- SMART ISSUE COMBINATION ---
 issue_parts = []
