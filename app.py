@@ -109,8 +109,11 @@ st.set_page_config(page_title="The Reminder India", page_icon="🏛️", layout=
 local_css()
 
 # --- INITIALIZE RESET COUNTER ---
+# --- INITIALIZE SESSION VARIABLES ---
 if "reset_counter" not in st.session_state:
     st.session_state.reset_counter = 0
+if "gen_count" not in st.session_state:
+    st.session_state.gen_count = 0  # Tracks how many letters they've generated
 
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 SENDER_EMAIL = st.secrets["SENDER_EMAIL"]
@@ -223,7 +226,7 @@ def generate_official_letter(user_details, issue_description, location_info, glo
     - Output RAW TEXT ONLY. NO markdown formatting like backticks (```) or bolding (**).
     - END WITH: 'SUGGESTED_EMAIL: ' (This specific keyword MUST remain exactly 'SUGGESTED_EMAIL:' in English, followed by the exact official email if you know it, otherwise leave blank).
     """
-    
+ 
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
@@ -232,7 +235,6 @@ def generate_official_letter(user_details, issue_description, location_info, glo
         ]
     )
     return response.choices[0].message.content
-
 
 # --- LOCAL TRANSLATION ENGINE FOR UI ---
 @st.cache_data
@@ -406,6 +408,25 @@ app_titles = {
 display_title = app_titles.get(global_language, "The Reminder India")
 st.title(display_title)
 
+# --- HEADER BLOCK ---
+# Create a cached function so it only checks Google Sheets every 10 minutes (saves load time)
+@st.cache_data(ttl=600)
+def get_petition_count():
+    try:
+        # Assuming your sheet has a header row, reading the length gives total entries
+        df = conn.read()
+        return len(df)
+    except:
+        return 0
+
+total_petitions = get_petition_count()
+# Add a nice visual flair above the main title
+if total_petitions > 0:
+    st.caption(f"🔥 Join the movement: **{total_petitions}** civic petitions successfully dispatched via The Reminder India.")
+
+display_title = app_titles.get(global_language, "The Reminder India")
+st.title(display_title)
+
 col_text, col_img = st.columns([6, 4], gap="large")
 
 with col_text:
@@ -430,6 +451,10 @@ st.markdown("<br>", unsafe_allow_html=True)
 st.markdown("---")
 
 with st.expander(ui.get("tutorial_expander", "Tutorial"), expanded=False):
+    # ADD THIS LINE: Replace with your actual YouTube Short link
+    st.video("https://www.youtube.com/watch?v=YOUR_VIDEO_ID_HERE")
+    st.markdown("<br>", unsafe_allow_html=True)
+    
     if "slide_idx" not in st.session_state:
         st.session_state.slide_idx = 0
 
@@ -556,6 +581,36 @@ with col_files:
 # 5. STEP 2: REPORTER DETAILS  
 st.markdown("---")
 st.subheader(ui.get("step2", "Step 2"))
+
+# --- LOCAL SPOTLIGHT TEMPLATES ---
+st.caption("⚡ **Fast-Track: Select a common local issue to auto-fill the details below:**")
+c1, c2, c3 = st.columns(3)
+
+if c1.button("🗑️ Kandhla Garbage Dump"):
+    st.session_state.auto_cat = "Uncollected Garbage"
+    st.session_state.auto_desc = "Massive garbage pile accumulation near the main market area causing severe health hazards and foul smell."
+if c2.button("💡 Eastern Yamuna Canal Lights"):
+    st.session_state.auto_cat = "Non-functional Streetlight"
+    st.session_state.auto_desc = "All streetlights along the Eastern Yamuna Canal road are completely dead, causing safety risks at night."
+if c3.button("🛣️ Main Road Potholes"):
+    st.session_state.auto_cat = "Broken Road / Pothole"
+    st.session_state.auto_desc = "Deep, dangerous potholes on the main connecting road that are damaging vehicles and causing traffic jams."
+
+# Update your existing inputs to use these session state values!
+issue_category = st.selectbox(
+    ui.get("category", "Category"), 
+    options=["", "Uncollected Garbage", "Broken Road / Pothole", "Clogged Drainage", "Non-functional Streetlight", "Contaminated Water", "Other"],
+    index=["", "Uncollected Garbage", "Broken Road / Pothole", "Clogged Drainage", "Non-functional Streetlight", "Contaminated Water", "Other"].index(st.session_state.get("auto_cat", "")) if st.session_state.get("auto_cat") else 0,
+    key=f"category_{st.session_state.reset_counter}"
+)
+
+issue_details = st.text_area(
+    ui.get("desc", "Description"), 
+    value=st.session_state.get("auto_desc", ""),
+    key=f"details_{st.session_state.reset_counter}"
+)
+# ----------------------------------
+
 user_name = st.text_input(ui.get("name", "Name"), key=f"sender_name_{st.session_state.reset_counter}")
 
 user_phone = st.text_input(ui.get("phone", "Phone"), max_chars=10, key=f"sender_phone_{st.session_state.reset_counter}")
@@ -610,6 +665,13 @@ if issue_details.strip():
 issue = "\n\n".join(issue_parts)
 
 # 6. STEP 3: GENERATION
+if st.session_state.gen_count >= 3:
+    st.error("🛑 Daily Limit Reached: To keep this free community service running, we limit users to 3 petitions per session. Please try again tomorrow!")
+else:
+    if st.button(ui.get("gen_btn", "Generate"), key=f"gen_{st.session_state.reset_counter}"):
+        # Increase the counter immediately when clicked
+        st.session_state.gen_count += 1
+
 if st.button(ui.get("gen_btn", "Generate"), key=f"gen_{st.session_state.reset_counter}"):
     if "letter" in st.session_state:
         del st.session_state["letter"]
@@ -700,17 +762,29 @@ if "letter" in st.session_state:
     col_btn1, col_btn2 = st.columns(2)
     
     with col_btn1:
+        with col_btn1:
         if global_language == "English":
             pdf_bytes = create_pdf(final_download_text, global_language)
             if pdf_bytes:
-                st.download_button(ui.get("dl_pdf", "Download PDF"), data=pdf_bytes, file_name=f"TRI_Report_{user_pin}.pdf", mime="application/pdf", key=f"dl_pdf_{st.session_state.reset_counter}")
-            else:
-                st.error("Error generating PDF.")
+                st.download_button(ui.get("dl_pdf", "Download PDF"), data=pdf_bytes, file_name=f"TRI_Report_{user_pin}.pdf", mime="application/pdf")
         else:
             txt_bytes = final_download_text.encode('utf-8')
-            st.download_button(ui.get("dl_txt", "Download TXT"), data=txt_bytes, file_name=f"TRI_Report_{user_pin}.txt", mime="text/plain", key=f"dl_txt_{st.session_state.reset_counter}")
+            st.download_button(ui.get("dl_txt", "Download TXT"), data=txt_bytes, file_name=f"TRI_Report_{user_pin}.txt", mime="text/plain")
         
-        st.caption("💡 **Want to post on Facebook or Instagram?** Download the letter above and attach it directly to your post!")
+        # --- NEW: ADD TO CALENDAR BUTTON ---
+        follow_up_date = (datetime.now() + timedelta(days=7)).strftime("%Y%m%d")
+        ics_content = f"""BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+DTSTART:{follow_up_date}T090000Z
+DTEND:{follow_up_date}T100000Z
+SUMMARY:Follow up on TRI Civic Petition
+DESCRIPTION:Check if the Municipal Commissioner resolved the {issue_category} issue reported 7 days ago.
+END:VEVENT
+END:VCALENDAR"""
+        
+        st.download_button("📅 Set 7-Day Follow-Up Reminder", data=ics_content.encode('utf-8'), file_name="TRI_Reminder.ics", mime="text/calendar")
+        # -----------------------------------
 
     with col_btn2:
         st.caption("By clicking send, you agree to our Privacy Policy.")
