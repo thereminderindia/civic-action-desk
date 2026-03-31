@@ -323,7 +323,7 @@ if "letter" in st.session_state:
 
     # Calculate precise height: 26 pixels per line + 40px for the UI box padding
     # Lowered the minimum height to 250 so short letters look neat
-    dynamic_height = max(250, int((total_estimated_lines * 26) + 40))
+    dynamic_height = max(250, int((total_estimated_lines * 22) + 30))
 
     st.text_area("Letter Content:", value=st.session_state.letter, height=dynamic_height, key=f"review_text_{st.session_state.reset_counter}")
     # --------------------------------------------
