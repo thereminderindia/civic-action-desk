@@ -1,4 +1,91 @@
 import streamlit as st
+def local_css():
+    st.markdown("""
+    <style>
+    /* Global Styles */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+    
+    html, body, [class*="css"] {
+        font-family: 'Inter', 'Noto Sans Devanagari', 'Noto Sans Bengali', sans-serif;
+    }
+
+    /* Main Container Padding */
+    .main .block-container {
+        padding-top: 2rem;
+        max-width: 900px;
+    }
+
+    /* Sidebar Styling */
+    section[data-testid="stSidebar"] {
+        background-color: #f8f9fa;
+        border-right: 1px solid #e0e0e0;
+    }
+
+    /* Professional Button Styling */
+    .stButton>button {
+        width: 100%;
+        border-radius: 12px;
+        height: 3em;
+        background-color: #1E3A8A; /* Civic Blue */
+        color: white;
+        border: none;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .stButton>button:hover {
+        background-color: #1D4ED8;
+        border: none;
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    /* Secondary Action Button (Clear/Reset) */
+    div[data-testid="stVerticalBlock"] > div:last-child .stButton>button {
+        background-color: transparent;
+        color: #ef4444;
+        border: 1px solid #ef4444;
+    }
+
+    /* Input Fields */
+    .stTextInput>div>div>input, .stTextArea>div>div>textarea {
+        border-radius: 10px;
+        border: 1px solid #d1d5db;
+    }
+
+    /* Success/Warning Box Styling */
+    .stAlert {
+        border-radius: 12px;
+        border: none;
+    }
+
+    /* Header Styling */
+    h1 {
+        color: #1E3A8A;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+    }
+    
+    h2, h3 {
+        color: #374151;
+        font-weight: 600;
+    }
+
+    /* Mobile responsiveness for the logo */
+    [data-testid="stSidebarNav"]::before {
+        content: "THE REMINDER INDIA";
+        padding-left: 20px;
+        font-family: 'Inter';
+        font-weight: 800;
+        font-size: 1.2rem;
+        color: #1E3A8A;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+# Call the function at the start
+local_css()
 from openai import OpenAI
 import smtplib
 from email.mime.multipart import MIMEMultipart
