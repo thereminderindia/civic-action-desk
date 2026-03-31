@@ -278,6 +278,7 @@ with st.expander(ui["tutorial_expander"], expanded=False):
             st.markdown("<br>", unsafe_allow_html=True)
             st.caption(f"**Step {st.session_state.slide_idx + 1} of {len(tutorial_slides)}**")
 
+        # Navigation Buttons (Placed neatly at the bottom right)
         st.markdown("<hr style='margin: 1em 0;'>", unsafe_allow_html=True)
         nav_spacer, nav_prev, nav_next = st.columns([4, 1, 1])
         
@@ -287,10 +288,18 @@ with st.expander(ui["tutorial_expander"], expanded=False):
                 st.rerun()
                 
         with nav_next:
-            if st.button("Next ➡️", disabled=(st.session_state.slide_idx == len(tutorial_slides) - 1), use_container_width=True):
-                st.session_state.slide_idx += 1
-                st.rerun()
-# --------------------------------------------
+            # Check if we are on the last slide
+            if st.session_state.slide_idx < len(tutorial_slides) - 1:
+                if st.button("Next ➡️", use_container_width=True):
+                    st.session_state.slide_idx += 1
+                    st.rerun()
+            else:
+                # Show Finish button on the last slide
+                if st.button("✅ Finish", use_container_width=True):
+                    st.session_state.slide_idx = 0  # Reset back to the first slide
+                    st.toast("Tutorial completed! You are ready to start.") # Adds a nice little popup notification!
+                    st.rerun()
+        #-----------------------------
 
 # 4. STEP 1: LOCATION DETAILS
 st.markdown("---")
