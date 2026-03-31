@@ -347,18 +347,18 @@ if not ui:
 
 st.sidebar.markdown("---")
 st.sidebar.subheader(ui.get("connect", "Connect"))
-st.sidebar.link_button("📺 YouTube", "[https://youtube.com/@TheReminderIndia](https://youtube.com/@TheReminderIndia)")
-st.sidebar.link_button("🔵 Facebook", "[https://facebook.com/TheReminderIndia](https://facebook.com/TheReminderIndia)")
-st.sidebar.link_button("📸 Instagram", "[https://instagram.com/TheReminderIndia](https://instagram.com/TheReminderIndia)")
+st.sidebar.link_button("📺 YouTube", "https://youtube.com/@TheReminderIndia")
+st.sidebar.link_button("🔵 Facebook", "https://facebook.com/TheReminderIndia")
+st.sidebar.link_button("📸 Instagram", "https://instagram.com/TheReminderIndia")
 
 search_container = st.sidebar.container()
 
 st.sidebar.markdown("---")
 st.sidebar.subheader(ui.get("tools", "Tools"))
-st.sidebar.link_button("🔍 Pincode Verify", "[https://www.indiapost.gov.in/VAS/Pages/findpincode.aspx](https://www.indiapost.gov.in/VAS/Pages/findpincode.aspx)")
+st.sidebar.link_button("🔍 Pincode Verify", "https://www.indiapost.gov.in/VAS/Pages/findpincode.aspx")
 st.sidebar.markdown("---")
 st.sidebar.caption(ui.get("legal", "Legal"))
-st.sidebar.link_button("📄 Privacy Policy", "[https://sites.google.com/view/httpsthereminderindia-streamli/home](https://sites.google.com/view/httpsthereminderindia-streamli/home)")
+st.sidebar.link_button("📄 Privacy Policy", "https://sites.google.com/view/httpsthereminderindia-streamli/home")
 
 pincode_df = load_pincode_db()
 
@@ -529,7 +529,7 @@ if selected_loc:
         dept_keywords = "Water Supply Department OR Jal Board"
 
     search_query = f"official email {dept_keywords} {selected_loc['Town']} {selected_loc['District']} site:.gov.in OR site:.nic.in"
-    google_url = f"[https://www.google.com/search?q=](https://www.google.com/search?q=){urllib.parse.quote(search_query)}"
+    google_url = f"(https://www.google.com/search?q=){urllib.parse.quote(search_query)}"
     
     with search_container:
         st.markdown("---")
