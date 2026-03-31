@@ -421,13 +421,15 @@ if total_petitions > 0:
     st.caption(f"🔥 Join the movement: **{total_petitions}** civic petitions successfully dispatched via The Reminder India.")
 
 # --- HEADER BLOCK ---
-display_title = app_titles.get(global_language, "The Reminder India")
-st.title(display_title)
-
-# Add the vertical_alignment parameter here!
+# We create the centered columns FIRST
 col_text, col_img = st.columns([6, 4], gap="large", vertical_alignment="center")
 
 with col_text:
+    # We moved the main title INSIDE the left column!
+    display_title = app_titles.get(global_language, "The Reminder India")
+    st.title(display_title)
+    
+    # The rest of your text stays the same
     st.markdown(f"## {ui.get('header_title', '')}")
     st.markdown(f"{ui.get('header_desc', '')}")
     st.markdown(f"**{ui.get('header_special', '')}** {ui.get('header_special_desc', '')}")
