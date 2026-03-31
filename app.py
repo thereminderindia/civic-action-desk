@@ -762,7 +762,6 @@ if "letter" in st.session_state:
     col_btn1, col_btn2 = st.columns(2)
     
     with col_btn1:
-        with col_btn1:
         if global_language == "English":
             pdf_bytes = create_pdf(final_download_text, global_language)
             if pdf_bytes:
