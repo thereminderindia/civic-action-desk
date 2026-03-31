@@ -1,4 +1,21 @@
 import streamlit as st
+from openai import OpenAI
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email import encoders
+from fpdf import FPDF
+import pandas as pd
+import re
+import mimetypes
+from datetime import datetime
+from streamlit_gsheets import GSheetsConnection
+from streamlit_js_eval import streamlit_js_eval
+import urllib.parse
+import base64
+import os
+import json
 
 def local_css():
     st.markdown("""
@@ -85,8 +102,13 @@ def local_css():
     </style>
     """, unsafe_allow_html=True)
 
-# Call the function at the start
+# 1. SETUP & AUTHENTICATION
+st.set_page_config(page_title="The Reminder India", page_icon="🏛️", layout="wide")
+
+# Call the CSS function at the start
 local_css()
+
+# Header with Logo
 col1, col2 = st.columns([1, 4])
 with col1:
     # Ensure your logo is actually named 'logo.png' and is inside the 'assets' folder
@@ -95,30 +117,9 @@ with col1:
 with col2:
     st.title("The Reminder India")
 
-from openai import OpenAI
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-from email.mime.base import MIMEBase
-from email import encoders
-from fpdf import FPDF
-import pandas as pd
-import re
-import mimetypes
-from datetime import datetime
-from streamlit_gsheets import GSheetsConnection
-from streamlit_js_eval import streamlit_js_eval
-import urllib.parse
-import base64
-import os
-import json
-
 # --- INITIALIZE RESET COUNTER ---
 if "reset_counter" not in st.session_state:
     st.session_state.reset_counter = 0
-
-# 1. SETUP & AUTHENTICATION
-st.set_page_config(page_title="The Reminder India", page_icon="🏛️", layout="wide")
 
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 SENDER_EMAIL = st.secrets["SENDER_EMAIL"]
