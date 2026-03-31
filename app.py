@@ -15,6 +15,7 @@ from streamlit_js_eval import streamlit_js_eval
 import urllib.parse
 import base64
 import os
+import json
 
 # --- INITIALIZE RESET COUNTER ---
 if "reset_counter" not in st.session_state:
@@ -65,6 +66,59 @@ def create_pdf(text):
     except Exception as e:
         return None
 
+# --- AI TRANSLATION ENGINE FOR SLIDESHOW ---
+@st.cache_data(show_spinner=False)
+def get_translated_slides(language):
+    base_slides = [
+        {"image": "1st.png", "title": "Welcome to The Reminder India", "text": "Welcome to the ultimate civic action tool. Getting started is easy: just open your browser on any device and visit thereminderindia.streamlit.app. No downloads required. Let's draft your first official complaint!"},
+        {"image": "2.png", "title": "Step 1: Speak Your Language", "text": "We believe you shouldn't need to be fluent in formal English to demand action. Click the 'Select Language' dropdown in the sidebar. Choose from Hindi, Bengali, Tamil, Marathi, and over a dozen other native languages. Our AI will automatically translate and format your letter perfectly."},
+        {"image": "3.png", "title": "Step 1: Enter Your PIN", "text": "Type in the 6-digit PIN code of the area where the problem is located. The system will automatically search our national post office database to find the relevant local authorities."},
+        {"image": "4.png", "title": "Step 1: Target the Exact Municipality", "text": "Select the exact Town/City from the 'Confirm' dropdown. This step is crucial to ensure your final letter is addressed to the correct local municipal commissioner."},
+        {"image": "6.png", "title": "Step 1: Lock in the Coordinates", "text": "Once you see the green confirmation box, your location is set! \n\n**Pro Tip:** Standing right next to the pothole or broken streetlight? Click 'Capture Exact GPS' on your mobile device to attach a Google Maps link directly inside your complaint letter."},
+        {"image": "7.png", "title": "Step 1: Show, Don't Just Tell", "text": "Words are good, but pictures demand action. Use the 'Attach Evidence' box to upload photos or short video clips of the issue (up to 20MB). These files will be securely attached to the final email sent to the authorities."},
+        {"image": "8.png", "title": "Step 2: Reporter Details", "text": "Now, tell us who is sending the letter. Enter your Full Name so the petition can be formally signed. Your Contact Number is optional, but highly recommended so officials can reach you directly if they need more details about the issue."},
+        {"image": "9.png", "title": "Step 2: Categorize the Problem", "text": "Use the 'Quick Issue Select' dropdown to categorize the problem. Options include Uncollected Garbage, Broken Roads, Clogged Drainage, and more. Don't see your specific issue? Just select 'Other' or leave it blank—our AI is smart enough to figure it out from your description!"},
+        {"image": "10.png", "title": "Step 2: Describe the Issue Naturally", "text": "This is where the magic happens. You don't need to write a formal letter here. Just type out the specific details naturally. Tell the AI exactly where the problem is (like nearby landmarks). When you're ready, click 'Generate Official Letter' and watch the AI instantly turn your simple text into a powerful, formal petition!"},
+        {"image": "11.png", "title": "Step 4: Review Your Formal Petition", "text": "Within seconds, your simple description is transformed into a highly professional, fully formatted civic petition. Notice how the AI automatically includes the correct date, a strong subject line, formal salutations, and weaves your specific landmarks directly into the text. Need to make a tweak? You can type directly into the box to edit it before sending!"},
+        {"image": "12.png", "title": "Step 4: Route & Dispatch Your Complaint", "text": "We don't just write the letter; we deliver it. The AI will attempt to suggest the official's email automatically, but you can paste the exact To, CC, and BCC addresses here. Enter your own email to get a receipt copy! \n\nClick 'Send Official Email Now' to dispatch it instantly via our secure servers, OR click 'Download Print PDF' if you want a physical copy."},
+        {"image": "13.png", "title": "Direct WhatsApp Routing", "text": "Many modern municipal departments now use WhatsApp for grievance redressal. Simply type in the 10-digit official WhatsApp number. Click the generated green button, and your entire formal letter will be instantly copied into your personal WhatsApp app, ready to send directly to the official!"},
+        {"image": "14.png", "title": "Public Amplification on X (Twitter)", "text": "Sometimes, public visibility is the fastest way to get things fixed. Enter the official X/Twitter handle of your local authority. Click the button, and the app will generate a punchy, character-limit-friendly summary of your issue, complete with hashtags, ready for you to post and apply public pressure."},
+        {"image": "16.png", "title": "Your Toolkit & Starting Fresh", "text": "Look at the left sidebar at any time for helpful tools. Don't know the official's email? Click the search link to automatically run a targeted Google search for government contacts in your area. \n\nDone with your complaint? Hit the blue 'Clear Form & Start New' button at the bottom of the page to securely wipe your data and start a brand new report!"}
+    ]
+
+    if language == "English":
+        return base_slides
+
+    with st.spinner(f"🌐 Translating setup guide to {language}..."):
+        try:
+            text_only_slides = [{"id": i, "title": s["title"], "text": s["text"]} for i, s in enumerate(base_slides)]
+            
+            sys_prompt = f"You are a professional translator. Translate the 'title' and 'text' values of the provided JSON array into {language}. Return a valid JSON object with a single root key called 'slides' containing the translated array."
+            
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": sys_prompt},
+                    {"role": "user", "content": json.dumps({"slides": text_only_slides})}
+                ],
+                response_format={ "type": "json_object" } 
+            )
+            
+            translated_data = json.loads(response.choices[0].message.content)
+            
+            translated_slides = []
+            for i, trans_slide in enumerate(translated_data["slides"]):
+                translated_slides.append({
+                    "image": base_slides[i]["image"],
+                    "title": trans_slide["title"],
+                    "text": trans_slide["text"]
+                })
+            return translated_slides
+            
+        except Exception as e:
+            return base_slides
+
+
 # 3. INTERFACE & SIDEBAR
 st.set_page_config(page_title="The Reminder India", page_icon="🏛️", layout="wide")
 
@@ -76,6 +130,17 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+st.sidebar.title("🌐 App Settings")
+global_language = st.sidebar.selectbox("Select Language:", options=
+    ["English", "Hindi (हिन्दी)", "Bengali (বাংলা)", "Marathi (मराठी)", 
+     "Telugu (తెలుగు)", "Tamil (தமிழ்)", "Gujarati (ગુજરાતી)", 
+     "Urdu (اردو)", "Kannada (କನ್ನಡ)", "Odia (ଓଡ଼ିଆ)", 
+     "Malayalam (മലയാളം)", "Punjabi (ਪੰਜਾਬੀ)", "Assamese (অসমੀয়া)", 
+     "Maithili (मैथिली)", "Santali (संताली)", "Kashmiri (کٲशُر)", 
+     "Nepali (नेपाली)", "Konkani (कोंकਣੀ)", "Sindhi (سنڌي)", 
+     "Dogri (डोगरी)", "Manipuri (মৈতৈলোন)", "Bodo (बर')", "Sanskrit (संस्कृतम्)"])
+
+st.sidebar.markdown("---")
 st.sidebar.title("📲 Connect with TRI")
 st.sidebar.link_button("📺 YouTube", "https://youtube.com/@TheReminderIndia")
 st.sidebar.link_button("🔵 Facebook", "https://facebook.com/TheReminderIndia")
@@ -89,8 +154,7 @@ st.sidebar.link_button("📄 Privacy Policy", "https://sites.google.com/view/htt
 
 pincode_df = load_pincode_db()
 
-# --- NEW HEADER BLOCK: NATIVE STREAMLIT LAYOUT ---
-# We use native columns instead of HTML flexbox to prevent the vertical text bug
+# --- HEADER BLOCK ---
 col_text, col_img = st.columns([6, 4], gap="large")
 
 with col_text:
@@ -106,122 +170,40 @@ with col_text:
     """, unsafe_allow_html=True)
     
 with col_img:
-    import os
     if os.path.exists("banner.jpg"):
-        # This native Streamlit function automatically sizes the image perfectly
         st.image("banner.jpg", use_container_width=True)
     else:
         st.info("Banner image not found. Please ensure 'banner.jpg' is uploaded to your repository.")
         
 st.markdown("<br>", unsafe_allow_html=True)
-# --- END OF NEW HEADER BLOCK ---
 
 # --- INTERACTIVE APP TUTORIAL (SLIDESHOW) ---
 st.markdown("---")
 
 with st.expander("📖 First time here? View the step-by-step guide", expanded=False):
-    # Initialize the slide counter in session state
     if "slide_idx" not in st.session_state:
         st.session_state.slide_idx = 0
 
-    # The complete 14-step tutorial array
-    tutorial_slides = [
-        {
-            "image": "1st.png", 
-            "title": "Welcome to The Reminder India", 
-            "text": "Welcome to the ultimate civic action tool. Getting started is easy: just open your browser on any device and visit thereminderindia.streamlit.app. No downloads required. Let's draft your first official complaint!"
-        },
-        {
-            "image": "2.png", 
-            "title": "Step 1: Speak Your Language", 
-            "text": "We believe you shouldn't need to be fluent in formal English to demand action. Click the 'Select Letter Language' dropdown. Choose from Hindi, Bengali, Tamil, Marathi, and over a dozen other native languages. Our AI will automatically translate and format your letter perfectly."
-        },
-        {
-            "image": "3.png", 
-            "title": "Step 1: Enter Your PIN", 
-            "text": "Type in the 6-digit PIN code of the area where the problem is located. The system will automatically search our national post office database to find the relevant local authorities."
-        },
-        {
-            "image": "4.png", 
-            "title": "Step 1: Target the Exact Municipality", 
-            "text": "Select the exact Town/City from the 'Confirm' dropdown. This step is crucial to ensure your final letter is addressed to the correct local municipal commissioner."
-        },
-        {
-            "image": "6.png", 
-            "title": "Step 1: Lock in the Coordinates", 
-            "text": "Once you see the green confirmation box, your location is set! \n\n**Pro Tip:** Standing right next to the pothole or broken streetlight? Click 'Capture Exact GPS' on your mobile device to attach a Google Maps link directly inside your complaint letter."
-        },
-        {
-            "image": "7.png", 
-            "title": "Step 1: Show, Don't Just Tell", 
-            "text": "Words are good, but pictures demand action. Use the 'Attach Evidence' box to upload photos or short video clips of the issue (up to 20MB). These files will be securely attached to the final email sent to the authorities."
-        },
-        {
-            "image": "8.png", 
-            "title": "Step 2: Reporter Details", 
-            "text": "Now, tell us who is sending the letter. Enter your Full Name so the petition can be formally signed. Your Contact Number is optional, but highly recommended so officials can reach you directly if they need more details about the issue."
-        },
-        {
-            "image": "9.png", 
-            "title": "Step 2: Categorize the Problem", 
-            "text": "Use the 'Quick Issue Select' dropdown to categorize the problem. Options include Uncollected Garbage, Broken Roads, Clogged Drainage, and more. Don't see your specific issue? Just select 'Other' or leave it blank—our AI is smart enough to figure it out from your description!"
-        },
-        {
-            "image": "10.png", 
-            "title": "Step 2: Describe the Issue Naturally", 
-            "text": "This is where the magic happens. You don't need to write a formal letter here. Just type out the specific details naturally. Tell the AI exactly where the problem is (like nearby landmarks). When you're ready, click 'Generate Official Letter' and watch the AI instantly turn your simple text into a powerful, formal petition!"
-        },
-        {
-            "image": "11.png", 
-            "title": "Step 4: Review Your Formal Petition", 
-            "text": "Within seconds, your simple description is transformed into a highly professional, fully formatted civic petition. Notice how the AI automatically includes the correct date, a strong subject line, formal salutations, and weaves your specific landmarks directly into the text. Need to make a tweak? You can type directly into the box to edit it before sending!"
-        },
-        {
-            "image": "12.png", 
-            "title": "Step 4: Route & Dispatch Your Complaint", 
-            "text": "We don't just write the letter; we deliver it. The AI will attempt to suggest the official's email automatically, but you can paste the exact To, CC, and BCC addresses here. Enter your own email to get a receipt copy! \n\nClick 'Send Official Email Now' to dispatch it instantly via our secure servers, OR click 'Download Print PDF' if you want a physical copy."
-        },
-        {
-            "image": "13.png", 
-            "title": "Direct WhatsApp Routing", 
-            "text": "Many modern municipal departments now use WhatsApp for grievance redressal. Simply type in the 10-digit official WhatsApp number. Click the generated green button, and your entire formal letter will be instantly copied into your personal WhatsApp app, ready to send directly to the official!"
-        },
-        {
-            "image": "14.png", 
-            "title": "Public Amplification on X (Twitter)", 
-            "text": "Sometimes, public visibility is the fastest way to get things fixed. Enter the official X/Twitter handle of your local authority. Click the button, and the app will generate a punchy, character-limit-friendly summary of your issue, complete with hashtags, ready for you to post and apply public pressure."
-        },
-        {
-            "image": "16.png", 
-            "title": "Your Toolkit & Starting Fresh", 
-            "text": "Look at the left sidebar at any time for helpful tools. Don't know the official's email? Click the search link to automatically run a targeted Google search for government contacts in your area. \n\nDone with your complaint? Hit the blue 'Clear Form & Start New' button at the bottom of the page to securely wipe your data and start a brand new report!"
-        }
-    ]
+    tutorial_slides = get_translated_slides(global_language)
 
-    # Create a clean layout for the slideshow
     slide_container = st.container(border=True)
-    current_slide = tutorial_slides[st.session_state.slide_idx]
-
-    with slide_container:
-        # Layout: Image on the left, text on the right
-        col_img, col_text = st.columns([1.2, 1], gap="large")
+    
+    if tutorial_slides:
+        current_slide = tutorial_slides[st.session_state.slide_idx]
+        col_img_slide, col_text_slide = st.columns([1.2, 1], gap="large")
         
-        with col_img:
-            import os
-            # Ensure the image exists before trying to load it to prevent app crashes
+        with col_img_slide:
             if os.path.exists(current_slide["image"]):
                 st.image(current_slide["image"], use_container_width=True)
             else:
                 st.warning(f"⚠️ Missing image: {current_slide['image']}. Please ensure this exact file name is uploaded to your GitHub repository.")
                 
-        with col_text:
+        with col_text_slide:
             st.markdown(f"<h3 style='margin-top:0;'>{current_slide['title']}</h3>", unsafe_allow_html=True)
             st.write(current_slide["text"])
-            
             st.markdown("<br>", unsafe_allow_html=True)
             st.caption(f"**Step {st.session_state.slide_idx + 1} of {len(tutorial_slides)}**")
 
-        # Navigation Buttons (Placed neatly at the bottom right)
         st.markdown("<hr style='margin: 1em 0;'>", unsafe_allow_html=True)
         nav_spacer, nav_prev, nav_next = st.columns([4, 1, 1])
         
@@ -236,20 +218,10 @@ with st.expander("📖 First time here? View the step-by-step guide", expanded=F
                 st.rerun()
 # --------------------------------------------
 
-# 4. STEP 1: LANGUAGE & LOCATION
+# 4. STEP 1: LOCATION DETAILS
 st.markdown("---")
-st.subheader("📍 Step 1: Language & Location")
-lang_col, pin_col, details_col = st.columns([2, 2, 4])
-
-with lang_col:
-    target_language = st.selectbox("Select Letter Language:", key=f"lang_{st.session_state.reset_counter}", options=
-        ["English", "Hindi (हिन्दी)", "Bengali (বাংলা)", "Marathi (मराठी)", 
-         "Telugu (తెలుగు)", "Tamil (தமிழ்)", "Gujarati (ગુજરાતી)", 
-         "Urdu (اردو)", "Kannada (କನ್ನಡ)", "Odia (ଓଡ଼ିଆ)", 
-         "Malayalam (മലയാളം)", "Punjabi (ਪੰਜਾਬੀ)", "Assamese (অসমੀয়া)", 
-         "Maithili (मैथिली)", "Santali (संताली)", "Kashmiri (کٲशُر)", 
-         "Nepali (नेपाली)", "Konkani (कोंकਣੀ)", "Sindhi (سنڌي)", 
-         "Dogri (डोगरी)", "Manipuri (মৈতৈলোন)", "Bodo (बर')", "Sanskrit (संस्कृतम्)"])
+st.subheader("📍 Step 1: Location Details")
+pin_col, details_col = st.columns([2, 4])
 
 with pin_col:
     user_pin = st.text_input("Enter 6-Digit PIN:", value="", max_chars=6, key=f"pin_{st.session_state.reset_counter}")
@@ -356,32 +328,32 @@ if st.button("🚀 1. Generate Official Letter", key=f"gen_{st.session_state.res
     if not user_name or not selected_loc or not issue.strip() or len(user_pin) != 6:
         st.error("⚠️ Please complete all fields correctly.")
     else:
-        with st.spinner(f"Drafting formal petition in {target_language}..."):
+        with st.spinner(f"Drafting formal petition in {global_language}..."):
             p_val = user_phone.strip()
             maps_url = st.session_state.get('maps_link', "")
             has_evidence = True if uploaded_files and len(uploaded_files) > 0 else False
 
-            from_label = "प्रेषक" if "Hindi" in target_language else f"the translation of 'From' in {target_language}"
-            to_label = "सेवा में" if "Hindi" in target_language else f"the translation of 'To' in {target_language}"
+            from_label = "प्रेषक" if "Hindi" in global_language else f"the translation of 'From' in {global_language}"
+            to_label = "सेवा में" if "Hindi" in global_language else f"the translation of 'To' in {global_language}"
 
             system_prompt = f"""
-            You are an expert bilingual civic assistant. Your task is to write a formal civic complaint letter ENTIRELY in {target_language}.
+            You are an expert bilingual civic assistant. Your task is to write a formal civic complaint letter ENTIRELY in {global_language}.
             
-            CRITICAL RULE: You MUST translate or transliterate ALL English names, dates, cities, and structural elements into the native script of {target_language}. Do not leave any English words unless {target_language} is English.
+            CRITICAL RULE: You MUST translate or transliterate ALL English names, dates, cities, and structural elements into the native script of {global_language}. Do not leave any English words unless {global_language} is English.
 
             Here is the raw data for the letter:
-            - Date: {current_date} (Translate the month and format appropriately for {target_language})
-            - Sender Name: {user_name} (Transliterate to {target_language} script)
+            - Date: {current_date} (Translate the month and format appropriately for {global_language})
+            - Sender Name: {user_name} (Transliterate to {global_language} script)
             - Sender Phone: {p_val}
             - Recipient Title: The Municipal Commissioner
-            - City/Town: {selected_loc['Town']} (Transliterate to {target_language} script)
-            - District: {selected_loc['District']} (Transliterate to {target_language} script)
+            - City/Town: {selected_loc['Town']} (Transliterate to {global_language} script)
+            - District: {selected_loc['District']} (Transliterate to {global_language} script)
             - PIN Code: {selected_loc['PIN']}
             - EXACT ISSUE DESCRIPTION: {issue}
             - GPS Link Available: {maps_url}
             - Evidence Attached: {'Yes' if has_evidence else 'No'}
 
-            FORMAT INSTRUCTIONS (Generate everything below in {target_language}):
+            FORMAT INSTRUCTIONS (Generate everything below in {global_language}):
             1. Date at the top.
             2. The "From" section (Sender name and phone). You MUST use '{from_label}' as the exact label for this section.
             3. The "To" section (Recipient title, City, District, PIN). You MUST use '{to_label}' as the exact label for this section.
@@ -466,7 +438,7 @@ if "letter" in st.session_state:
     col_btn1, col_btn2 = st.columns(2)
     
     with col_btn1:
-        if target_language == "English":
+        if global_language == "English":
             pdf_bytes = create_pdf(final_download_text)
             if pdf_bytes:
                 st.download_button("📥 Download Print PDF (With Dispatch Log)", data=pdf_bytes, file_name=f"TRI_Report_{user_pin}.pdf", mime="application/pdf", key=f"dl_pdf_{st.session_state.reset_counter}")
