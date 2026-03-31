@@ -85,7 +85,7 @@ st.sidebar.title("🛠️ Tools")
 st.sidebar.link_button("🔍 Pincode Verify", "https://www.indiapost.gov.in/VAS/Pages/findpincode.aspx")
 st.sidebar.markdown("---")
 st.sidebar.caption("⚖️ Legal & Trust")
-st.sidebar.link_button("📄 Privacy Policy", "https://sites.google.com/view/thereminderindia/home")
+st.sidebar.link_button("📄 Privacy Policy", "https://sites.google.com/view/httpsthereminderindia-streamli/home")
 
 pincode_df = load_pincode_db()
 
