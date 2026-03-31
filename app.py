@@ -149,7 +149,7 @@ def get_translated_slides(language):
         {"image": "8.png", "title": "Step 2: Reporter Details", "text": "Now, tell us who is sending the letter. Enter your Full Name so the petition can be formally signed. Your Contact Number is optional, but highly recommended so officials can reach you directly if they need more details about the issue."},
         {"image": "9.png", "title": "Step 2: Categorize the Problem", "text": "Use the 'Quick Issue Select' dropdown to categorize the problem. Options include Uncollected Garbage, Broken Roads, Clogged Drainage, and more. Don't see your specific issue? Just select 'Other' or leave it blank—our AI is smart enough to figure it out from your description!"},
         {"image": "10.png", "title": "Step 2: Describe the Issue Naturally", "text": "This is where the magic happens. You don't need to write a formal letter here. Just type out the specific details naturally. Tell the AI exactly where the problem is (like nearby landmarks). When you're ready, click 'Generate Official Letter' and watch the AI instantly turn your simple text into a powerful, formal petition!"},
-        {"image": "11.png", "title": "Step 4: Review Your Formal Petition", "text": "Within seconds, your simple description is transformed into a highly professional, fully formatted civic petition. Notice how the AI automatically includes the correct date, a strong subject line, formal salutations, and weaves your specific landmarks directly into the text. Need to make a tweak? You can type directly into the box to edit it before sending!"},
+        {"image": "11.png", "title": "Step 4: Review Your Formal Petition", "text": "Within seconds, your simple description is transformed into a highly professional, fully formatted civic petition. Notice how the AI automatically includes the correct date, a strong subject line, formal salutations, and weaves your specific landmarks directly into the text. Need to make a tweak? You can use the edit button to make changes before sending!"},
         {"image": "12.png", "title": "Step 4: Route & Dispatch Your Complaint", "text": "We don't just write the letter; we deliver it. The AI will attempt to suggest the official's email automatically, but you can paste the exact To, CC, and BCC addresses here. Enter your own email to get a receipt copy! \n\nClick 'Send Official Email Now' to dispatch it instantly via our secure servers, OR click 'Download Print PDF' if you want a physical copy."},
         {"image": "13.png", "title": "Direct WhatsApp Routing", "text": "Many modern municipal departments now use WhatsApp for grievance redressal. Simply type in the 10-digit official WhatsApp number. Click the generated green button, and your entire formal letter will be instantly copied into your personal WhatsApp app, ready to send directly to the official!"},
         {"image": "14.png", "title": "Public Amplification on X (Twitter)", "text": "Sometimes, public visibility is the fastest way to get things fixed. Enter the official X/Twitter handle of your local authority. Click the button, and the app will generate a punchy, character-limit-friendly summary of your issue, complete with hashtags, ready for you to post and apply public pressure."},
@@ -228,20 +228,14 @@ st.sidebar.link_button("📄 Privacy Policy", "https://sites.google.com/view/htt
 
 pincode_df = load_pincode_db()
 
-# --- HEADER BLOCK ---
+# --- HEADER BLOCK (Fixed HTML Issue) ---
 col_text, col_img = st.columns([6, 4], gap="large")
 
 with col_text:
-    st.markdown(f"""
-    <h1 style='margin-top: 0; padding-top: 0; font-size: 2.5em; color: white;'>{ui["header_title"]}</h1>
-    <p style='font-size: 1.1em; color: #aaaaaa; line-height: 1.6em;'>
-        {ui["header_desc"]}
-        <br><br>
-        <b>{ui["header_special"]}</b> {ui["header_special_desc"]}
-        <br><br>
-        <i>{ui["header_action"]}</i>
-    </p>
-    """, unsafe_allow_html=True)
+    st.markdown(f"## {ui['header_title']}")
+    st.markdown(f"{ui['header_desc']}")
+    st.markdown(f"**{ui['header_special']}** {ui['header_special_desc']}")
+    st.markdown(f"*{ui['header_action']}*")
     
 with col_img:
     if os.path.exists("banner.jpg"):
@@ -273,12 +267,11 @@ with st.expander(ui["tutorial_expander"], expanded=False):
                 st.warning(f"⚠️ Missing image: {current_slide['image']}. Please ensure this exact file name is uploaded to your GitHub repository.")
                 
         with col_text_slide:
-            st.markdown(f"<h3 style='margin-top:0;'>{current_slide['title']}</h3>", unsafe_allow_html=True)
+            st.markdown(f"### {current_slide['title']}")
             st.write(current_slide["text"])
             st.markdown("<br>", unsafe_allow_html=True)
             st.caption(f"**Step {st.session_state.slide_idx + 1} of {len(tutorial_slides)}**")
 
-        # Navigation Buttons (Placed neatly at the bottom right)
         st.markdown("<hr style='margin: 1em 0;'>", unsafe_allow_html=True)
         nav_spacer, nav_prev, nav_next = st.columns([4, 1, 1])
         
@@ -288,18 +281,18 @@ with st.expander(ui["tutorial_expander"], expanded=False):
                 st.rerun()
                 
         with nav_next:
-            # Check if we are on the last slide
+            # Check if we are on the final slide to show the Finish button
             if st.session_state.slide_idx < len(tutorial_slides) - 1:
                 if st.button("Next ➡️", use_container_width=True):
                     st.session_state.slide_idx += 1
                     st.rerun()
             else:
-                # Show Finish button on the last slide
                 if st.button("✅ Finish", use_container_width=True):
-                    st.session_state.slide_idx = 0  # Reset back to the first slide
-                    st.toast("Tutorial completed! You are ready to start.") # Adds a nice little popup notification!
+                    # Reset the slideshow index to the beginning
+                    st.session_state.slide_idx = 0
+                    st.toast("🎉 Tutorial complete! You are ready to start. Close this panel to begin.")
                     st.rerun()
-        #-----------------------------
+# --------------------------------------------
 
 # 4. STEP 1: LOCATION DETAILS
 st.markdown("---")
@@ -476,20 +469,18 @@ if "letter" in st.session_state:
     st.divider()
     st.subheader(ui["step4"])
     
-    paragraphs = st.session_state.letter.split('\n')
+    # 1. BEAUTIFUL AUTO-ADJUSTING READ-ONLY VIEW
+    st.markdown(f"##### {ui['letter_content']}")
+    st.info(st.session_state.letter) 
     
-    total_estimated_lines = 0
-    for para in paragraphs:
-        if para.strip() == "":
-            total_estimated_lines += 1 
-        else:
-            total_estimated_lines += (len(para) // 85) + 1 
-
-    dynamic_height = max(250, int((total_estimated_lines * 22) + 30))
-
-    st.text_area(ui["letter_content"], value=st.session_state.letter, height=dynamic_height, key=f"review_text_{st.session_state.reset_counter}")
-        
-    st.markdown(f"##### {ui['email_routing']}")
+    # 2. OPTIONAL MANUAL EDITING EXPANDER
+    with st.expander("✏️ Want to make manual edits? Click here."):
+        edited_letter = st.text_area("Edit your letter:", value=st.session_state.letter, height=250, label_visibility="collapsed")
+        if st.button("💾 Save Changes", key="save_edits"):
+            st.session_state.letter = edited_letter
+            st.rerun()
+            
+    st.markdown("##### " + ui['email_routing'])
     col_to, col_cc = st.columns(2)
     with col_to:
         rec_to = st.text_input(ui["to"], value=st.session_state.sug_email, key=f"rec_to_{st.session_state.reset_counter}")
