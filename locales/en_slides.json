@@ -1,0 +1,72 @@
+[
+  {
+    "image": "assets/1st.png", 
+    "title": "Welcome to The Reminder India", 
+    "text": "Welcome to the ultimate civic action tool. Getting started is easy: just open your browser on any device and visit thereminderindia.streamlit.app. No downloads required. Let's draft your first official complaint!"
+  },
+  {
+    "image": "assets/2.png", 
+    "title": "Step 1: Speak Your Language", 
+    "text": "We believe you shouldn't need to be fluent in formal English to demand action. Click the 'Select Language' dropdown in the sidebar. Choose from Hindi, Bengali, Tamil, Marathi, and over a dozen other native languages. Our AI will automatically translate and format your letter perfectly."
+  },
+  {
+    "image": "assets/3.png", 
+    "title": "Step 1: Enter Your PIN", 
+    "text": "Type in the 6-digit PIN code of the area where the problem is located. The system will automatically search our national post office database to find the relevant local authorities."
+  },
+  {
+    "image": "assets/4.png", 
+    "title": "Step 1: Target the Exact Municipality", 
+    "text": "Select the exact Town/City from the 'Confirm' dropdown. This step is crucial to ensure your final letter is addressed to the correct local municipal commissioner."
+  },
+  {
+    "image": "assets/6.png", 
+    "title": "Step 1: Lock in the Coordinates", 
+    "text": "Once you see the green confirmation box, your location is set! \n\n**Pro Tip:** Standing right next to the pothole or broken streetlight? Click 'Capture Exact GPS' on your mobile device to attach a Google Maps link directly inside your complaint letter."
+  },
+  {
+    "image": "assets/7.png", 
+    "title": "Step 1: Show, Don't Just Tell", 
+    "text": "Words are good, but pictures demand action. Use the 'Attach Evidence' box to upload photos or short video clips of the issue (up to 20MB). These files will be securely attached to the final email sent to the authorities."
+  },
+  {
+    "image": "assets/8.png", 
+    "title": "Step 2: Reporter Details", 
+    "text": "Now, tell us who is sending the letter. Enter your Full Name so the petition can be formally signed. Your Contact Number is optional, but highly recommended so officials can reach you directly if they need more details about the issue."
+  },
+  {
+    "image": "assets/9.png", 
+    "title": "Step 2: Categorize the Problem", 
+    "text": "Use the 'Quick Issue Select' dropdown to categorize the problem. Options include Uncollected Garbage, Broken Roads, Clogged Drainage, and more. Don't see your specific issue? Just select 'Other' or leave it blank—our AI is smart enough to figure it out from your description!"
+  },
+  {
+    "image": "assets/10.png", 
+    "title": "Step 2: Describe the Issue Naturally", 
+    "text": "This is where the magic happens. You don't need to write a formal letter here. Just type out the specific details naturally. Tell the AI exactly where the problem is (like nearby landmarks). When you're ready, click 'Generate Official Letter' and watch the AI instantly turn your simple text into a powerful, formal petition!"
+  },
+  {
+    "image": "assets/11.png", 
+    "title": "Step 4: Review Your Formal Petition", 
+    "text": "Within seconds, your simple description is transformed into a highly professional, fully formatted civic petition. Notice how the AI automatically includes the correct date, a strong subject line, formal salutations, and weaves your specific landmarks directly into the text. Need to make a tweak? You can use the edit button to make changes before sending!"
+  },
+  {
+    "image": "assets/12.png", 
+    "title": "Step 4: Route & Dispatch Your Complaint", 
+    "text": "We don't just write the letter; we deliver it. The AI will attempt to suggest the official's email automatically, but you can paste the exact To, CC, and BCC addresses here. Enter your own email to get a receipt copy! \n\nClick 'Send Official Email Now' to dispatch it instantly via our secure servers, OR click 'Download Print PDF' if you want a physical copy."
+  },
+  {
+    "image": "assets/13.png", 
+    "title": "Direct WhatsApp Routing", 
+    "text": "Many modern municipal departments now use WhatsApp for grievance redressal. Simply type in the 10-digit official WhatsApp number. Click the generated green button, and your entire formal letter will be instantly copied into your personal WhatsApp app, ready to send directly to the official!"
+  },
+  {
+    "image": "assets/14.png", 
+    "title": "Public Amplification on X (Twitter)", 
+    "text": "Sometimes, public visibility is the fastest way to get things fixed. Enter the official X/Twitter handle of your local authority. Click the button, and the app will generate a punchy, character-limit-friendly summary of your issue, complete with hashtags, ready for you to post and apply public pressure."
+  },
+  {
+    "image": "assets/16.png", 
+    "title": "Your Toolkit & Starting Fresh", 
+    "text": "Look at the left sidebar at any time for helpful tools. Don't know the official's email? Click the search link to automatically run a targeted Google search for government contacts in your area. \n\nDone with your complaint? Hit the blue 'Clear Form & Start New' button at the bottom of the page to securely wipe your data and start a brand new report!"
+  }
+]
