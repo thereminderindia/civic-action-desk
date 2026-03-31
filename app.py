@@ -1,4 +1,5 @@
 import streamlit as st
+
 def local_css():
     st.markdown("""
     <style>
@@ -89,9 +90,11 @@ local_css()
 col1, col2 = st.columns([1, 4])
 with col1:
     # Ensure your logo is actually named 'logo.png' and is inside the 'assets' folder
-    st.image("assets/logo.png", width=100)
+    if os.path.exists("assets/logo.png"):
+        st.image("assets/logo.png", width=100)
 with col2:
     st.title("The Reminder India")
+
 from openai import OpenAI
 import smtplib
 from email.mime.multipart import MIMEMultipart
@@ -183,43 +186,96 @@ def create_pdf(text, language):
         st.error(f"PDF Generation Error: {e}")
         return None
 
+# --- AI LETTER GENERATION ENGINE ---
+def generate_official_letter(user_details, issue_description, location_info, global_language, current_date, maps_url, has_evidence):
+    """
+    Wraps the OpenAI call using the Senior Civic Advocate persona, user dictionaries, 
+    and handles the translation formatting required by the app.
+    """
+    from_label = "प्रेषक" if "Hindi" in global_language else f"the translation of 'From' in {global_language}"
+    to_label = "सेवा में" if "Hindi" in global_language else f"the translation of 'To' in {global_language}"
+
+    # This is the "Voice" of the app
+    system_prompt = f"""
+    You are a Senior Civic Advocate in India. Draft a formal petition to the Municipal Commissioner regarding a public grievance. 
+    Use a professional, firm, and legalistic tone.
+    
+    CRITICAL RULE: You MUST translate or transliterate ALL English names, dates, cities, and structural elements into the native script of {global_language}. Do not leave any English words unless {global_language} is English.
+    """
+    
+    # This is the "Data" from the user mapped to formatting rules
+    user_prompt = f"""
+    Here is the raw data for the letter:
+    - Date: {current_date}
+    - Reporter Name: {user_details['name']}
+    - Reporter Phone: {user_details['phone']}
+    - Recipient Title: The Municipal Commissioner
+    - Location: {location_info['town']}, District: {location_info['district']}, PIN: {location_info['pin']}
+    - Issue Category: {user_details['category']}
+    - Description of Issue: {issue_description['text']}
+    - GPS Link Available: {maps_url}
+    - Evidence Attached: {'Yes' if has_evidence else 'No'}
+
+    FORMAT INSTRUCTIONS (Generate everything below in {global_language}):
+    1. Date at the top.
+    2. The "From" section (Sender name and phone). You MUST use '{from_label}' as the exact label for this section.
+    3. The "To" section (Recipient title, City, District, PIN). You MUST use '{to_label}' as the exact label for this section.
+    4. A clear, formal Subject line.
+    5. A formal Salutation (e.g., Respected Sir/Madam).
+    6. Write a full letter with 2-3 professional paragraphs explaining the issue. Include a strong 7-day resolution demand.
+    7. A formal closing (e.g., Sincerely) and the Sender's name.
+    8. The sign-off: "Supported by The Reminder India community." 
+
+    FINAL RULES: 
+    - Output RAW TEXT ONLY. NO markdown formatting like backticks (```) or bolding (**).
+    - END WITH: 'SUGGESTED_EMAIL: ' (This specific keyword MUST remain exactly 'SUGGESTED_EMAIL:' in English, followed by the exact official email if you know it, otherwise leave blank).
+    """
+    
+    # Call the AI model
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": system_prompt}, 
+            {"role": "user", "content": user_prompt}
+        ]
+    )
+    return response.choices[0].message.content
+
+
 # --- LOCAL TRANSLATION ENGINE FOR UI ---
 @st.cache_data
 def get_translated_ui(language):
-    # Ensure these keys match the names in your st.selectbox exactly!
-lang_map = {
-    "English": "en_slides.json",
-    "Hindi (हिन्दी)": "hi_slides.json",
-    "Bengali (বাংলা)": "bn_slides.json",
-    "Marathi (मराठी)": "mr_slides.json",
-    "Telugu (తెలుగు)": "te_slides.json",
-    "Tamil (தமிழ்)": "ta_slides.json",
-    "Gujarati (ગુજરાતી)": "gu_slides.json",
-    "Urdu (اردو)": "ur_slides.json",
-    "Kannada (ಕನ್ನಡ)": "kn_slides.json",
-    "Odia (ଓଡ଼ିଆ)": "or_slides.json",
-    "Malayalam (മലയാളം)": "ml_slides.json",
-    "Punjabi (ਪੰਜਾਬੀ)": "pa_slides.json",
-    "Assamese (অসমীয়া)": "as_slides.json",
-    "Maithili (मैथिली)": "mai_slides.json",
-    "Santali (संताली)": "sat_slides.json",
-    "Kashmiri (کأشُر)": "ks_slides.json",
-    "Nepali (नेपाली)": "ne_slides.json",
-    "Konkani (कोंकणी)": "kok_slides.json",
-    "Sindhi (سنڌي)": "sd_slides.json",
-    "Dogri (डोगरी)": "doi_slides.json",
-    "Manipuri (মণিপুরী)": "mni_slides.json",
-    "Bodo (बर')": "brx_slides.json",
-    "Sanskrit (संस्कृतम्)": "sa_slides.json"
-}
+    lang_map = {
+        "English": "en_slides.json",
+        "Hindi (हिन्दी)": "hi_slides.json",
+        "Bengali (বাংলা)": "bn_slides.json",
+        "Marathi (मराठी)": "mr_slides.json",
+        "Telugu (తెలుగు)": "te_slides.json",
+        "Tamil (தமிழ்)": "ta_slides.json",
+        "Gujarati (ગુજરાતી)": "gu_slides.json",
+        "Urdu (اردو)": "ur_slides.json",
+        "Kannada (ಕನ್ನಡ)": "kn_slides.json",
+        "Odia (ଓଡ଼ିଆ)": "or_slides.json",
+        "Malayalam (മലയാളം)": "ml_slides.json",
+        "Punjabi (ਪੰਜਾਬੀ)": "pa_slides.json",
+        "Assamese (অসমীয়া)": "as_slides.json",
+        "Maithili (मैथिली)": "mai_slides.json",
+        "Santali (संताली)": "sat_slides.json",
+        "Kashmiri (کأشُر)": "ks_slides.json",
+        "Nepali (नेपाली)": "ne_slides.json",
+        "Konkani (कोंकणी)": "kok_slides.json",
+        "Sindhi (سنڌي)": "sd_slides.json",
+        "Dogri (डोगरी)": "doi_slides.json",
+        "Manipuri (মণিপুরী)": "mni_slides.json",
+        "Bodo (बर')": "brx_slides.json",
+        "Sanskrit (संस्कृतम्)": "sa_slides.json"
+    }
     file_key = lang_map.get(language, "en")
-    
     file_path = os.path.join("locales", f"{file_key}.json")
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
             return json.load(f)
     except FileNotFoundError:
-        # Fallback to load English if the specific translation file is missing
         try:
              with open(os.path.join("locales", "en.json"), 'r', encoding='utf-8') as f:
                  return json.load(f)
@@ -230,40 +286,37 @@ lang_map = {
 # --- LOCAL TRANSLATION ENGINE FOR SLIDESHOW ---
 @st.cache_data
 def get_translated_slides(language):
-    # Ensure these keys match the names in your st.selectbox exactly!
-lang_map = {
-    "English": "en_slides.json",
-    "Hindi (हिन्दी)": "hi_slides.json",
-    "Bengali (বাংলা)": "bn_slides.json",
-    "Marathi (मराठी)": "mr_slides.json",
-    "Telugu (తెలుగు)": "te_slides.json",
-    "Tamil (தமிழ்)": "ta_slides.json",
-    "Gujarati (ગુજરાતી)": "gu_slides.json",
-    "Urdu (اردو)": "ur_slides.json",
-    "Kannada (ಕನ್ನಡ)": "kn_slides.json",
-    "Odia (ଓଡ଼ିଆ)": "or_slides.json",
-    "Malayalam (മലയാളം)": "ml_slides.json",
-    "Punjabi (ਪੰਜਾਬੀ)": "pa_slides.json",
-    "Assamese (অসমীয়া)": "as_slides.json",
-    "Maithili (मैथिली)": "mai_slides.json",
-    "Santali (संताली)": "sat_slides.json",
-    "Kashmiri (کأشُر)": "ks_slides.json",
-    "Nepali (नेपाली)": "ne_slides.json",
-    "Konkani (कोंकणी)": "kok_slides.json",
-    "Sindhi (سنڌي)": "sd_slides.json",
-    "Dogri (डोगरी)": "doi_slides.json",
-    "Manipuri (মণিপুরী)": "mni_slides.json",
-    "Bodo (बर')": "brx_slides.json",
-    "Sanskrit (संस्कृतम्)": "sa_slides.json"
-}
+    lang_map = {
+        "English": "en_slides.json",
+        "Hindi (हिन्दी)": "hi_slides.json",
+        "Bengali (বাংলা)": "bn_slides.json",
+        "Marathi (मराठी)": "mr_slides.json",
+        "Telugu (తెలుగు)": "te_slides.json",
+        "Tamil (தமிழ்)": "ta_slides.json",
+        "Gujarati (ગુજરાતી)": "gu_slides.json",
+        "Urdu (اردو)": "ur_slides.json",
+        "Kannada (ಕನ್ನಡ)": "kn_slides.json",
+        "Odia (ଓଡ଼ିଆ)": "or_slides.json",
+        "Malayalam (മലയാളം)": "ml_slides.json",
+        "Punjabi (ਪੰਜਾਬੀ)": "pa_slides.json",
+        "Assamese (অসমীয়া)": "as_slides.json",
+        "Maithili (मैथिली)": "mai_slides.json",
+        "Santali (संताली)": "sat_slides.json",
+        "Kashmiri (کأشُر)": "ks_slides.json",
+        "Nepali (नेपाली)": "ne_slides.json",
+        "Konkani (कोंकणी)": "kok_slides.json",
+        "Sindhi (سنڌي)": "sd_slides.json",
+        "Dogri (डोगरी)": "doi_slides.json",
+        "Manipuri (মণিপুরী)": "mni_slides.json",
+        "Bodo (बर')": "brx_slides.json",
+        "Sanskrit (संस्कृतम्)": "sa_slides.json"
+    }
     file_key = lang_map.get(language, "en_slides")
-    
     file_path = os.path.join("locales", f"{file_key}.json")
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
             return json.load(f)
     except FileNotFoundError:
-         # Fallback to load English if the specific translation file is missing
         try:
              with open(os.path.join("locales", "en_slides.json"), 'r', encoding='utf-8') as f:
                  return json.load(f)
@@ -309,18 +362,18 @@ if not ui:
 
 st.sidebar.markdown("---")
 st.sidebar.subheader(ui.get("connect", "Connect"))
-st.sidebar.link_button("📺 YouTube", "https://youtube.com/@TheReminderIndia")
-st.sidebar.link_button("🔵 Facebook", "https://facebook.com/TheReminderIndia")
-st.sidebar.link_button("📸 Instagram", "https://instagram.com/TheReminderIndia")
+st.sidebar.link_button("📺 YouTube", "[https://youtube.com/@TheReminderIndia](https://youtube.com/@TheReminderIndia)")
+st.sidebar.link_button("🔵 Facebook", "[https://facebook.com/TheReminderIndia](https://facebook.com/TheReminderIndia)")
+st.sidebar.link_button("📸 Instagram", "[https://instagram.com/TheReminderIndia](https://instagram.com/TheReminderIndia)")
 
 search_container = st.sidebar.container()
 
 st.sidebar.markdown("---")
 st.sidebar.subheader(ui.get("tools", "Tools"))
-st.sidebar.link_button("🔍 Pincode Verify", "https://www.indiapost.gov.in/VAS/Pages/findpincode.aspx")
+st.sidebar.link_button("🔍 Pincode Verify", "[https://www.indiapost.gov.in/VAS/Pages/findpincode.aspx](https://www.indiapost.gov.in/VAS/Pages/findpincode.aspx)")
 st.sidebar.markdown("---")
 st.sidebar.caption(ui.get("legal", "Legal"))
-st.sidebar.link_button("📄 Privacy Policy", "https://sites.google.com/view/httpsthereminderindia-streamli/home")
+st.sidebar.link_button("📄 Privacy Policy", "[https://sites.google.com/view/httpsthereminderindia-streamli/home](https://sites.google.com/view/httpsthereminderindia-streamli/home)")
 
 pincode_df = load_pincode_db()
 
@@ -420,7 +473,7 @@ with col_gps:
         loc = streamlit_js_eval(data_key='pos', func_name='getCurrentPosition', want_output=True)
         if loc:
             lat, lon = loc['coords']['latitude'], loc['coords']['longitude']
-            st.session_state.maps_link = f"https://www.google.com/maps/dir/?api=1&destination={lat},{lon}&travelmode=driving"
+            st.session_state.maps_link = f"[https://www.google.com/maps/dir/?api=1&destination=](https://www.google.com/maps/dir/?api=1&destination=){lat},{lon}&travelmode=driving"
             st.success(f"✅ GPS Captured! Navigation Link generated.")
 
 with col_files:
@@ -491,7 +544,7 @@ if selected_loc:
         dept_keywords = "Water Supply Department OR Jal Board"
 
     search_query = f"official email {dept_keywords} {selected_loc['Town']} {selected_loc['District']} site:.gov.in OR site:.nic.in"
-    google_url = f"https://www.google.com/search?q={urllib.parse.quote(search_query)}"
+    google_url = f"[https://www.google.com/search?q=](https://www.google.com/search?q=){urllib.parse.quote(search_query)}"
     
     with search_container:
         st.markdown("---")
@@ -519,47 +572,24 @@ if st.button(ui.get("gen_btn", "Generate"), key=f"gen_{st.session_state.reset_co
             maps_url = st.session_state.get('maps_link', "")
             has_evidence = True if uploaded_files and len(uploaded_files) > 0 else False
 
-            from_label = "प्रेषक" if "Hindi" in global_language else f"the translation of 'From' in {global_language}"
-            to_label = "सेवा में" if "Hindi" in global_language else f"the translation of 'To' in {global_language}"
+            # Package the user data into the requested dictionaries
+            user_details_dict = {"name": user_name, "phone": p_val, "category": issue_category}
+            issue_description_dict = {"text": issue}
+            location_info_dict = {"town": selected_loc['Town'], "district": selected_loc['District'], "pin": selected_loc['PIN']}
 
-            system_prompt = f"""
-            You are an expert bilingual civic assistant. Your task is to write a formal civic complaint letter ENTIRELY in {global_language}.
-            
-            CRITICAL RULE: You MUST translate or transliterate ALL English names, dates, cities, and structural elements into the native script of {global_language}. Do not leave any English words unless {global_language} is English.
-
-            Here is the raw data for the letter:
-            - Date: {current_date}
-            - Sender Name: {user_name}
-            - Sender Phone: {p_val}
-            - Recipient Title: The Municipal Commissioner
-            - City/Town: {selected_loc['Town']}
-            - District: {selected_loc['District']}
-            - PIN Code: {selected_loc['PIN']}
-            - EXACT ISSUE DESCRIPTION: {issue}
-            - GPS Link Available: {maps_url}
-            - Evidence Attached: {'Yes' if has_evidence else 'No'}
-
-            FORMAT INSTRUCTIONS (Generate everything below in {global_language}):
-            1. Date at the top.
-            2. The "From" section (Sender name and phone). You MUST use '{from_label}' as the exact label for this section.
-            3. The "To" section (Recipient title, City, District, PIN). You MUST use '{to_label}' as the exact label for this section.
-            4. A clear, formal Subject line.
-            5. A formal Salutation (e.g., Respected Sir/Madam).
-            6. Write 2-3 professional paragraphs explaining the issue. 
-            7. A formal closing (e.g., Sincerely) and the Sender's name.
-            8. The sign-off: "Supported by The Reminder India community." 
-
-            FINAL RULES: 
-            - Output RAW TEXT ONLY. NO markdown formatting like backticks (```) or bolding (**).
-            - END WITH: 'SUGGESTED_EMAIL: ' (This specific keyword MUST remain exactly 'SUGGESTED_EMAIL:' in English, followed by the exact official email if you know it, otherwise leave blank).
-            """
-            
             try:
-                response = client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": issue}]
+                # --- CALL THE NEW FUNCTION HERE ---
+                res_content = generate_official_letter(
+                    user_details=user_details_dict, 
+                    issue_description=issue_description_dict, 
+                    location_info=location_info_dict,
+                    global_language=global_language,
+                    current_date=current_date,
+                    maps_url=maps_url,
+                    has_evidence=has_evidence
                 )
-                res_content = response.choices[0].message.content.replace("```", "").strip()
+                
+                res_content = res_content.replace("```", "").strip()
                 st.session_state.letter = res_content.split("SUGGESTED_EMAIL:")[0].strip()
                 
                 raw_email = res_content.split("SUGGESTED_EMAIL:")[1].strip() if "SUGGESTED_EMAIL:" in res_content else ""
