@@ -89,57 +89,30 @@ st.sidebar.link_button("📄 Privacy Policy", "https://sites.google.com/view/the
 
 pincode_df = load_pincode_db()
 
-# --- NEW HEADER BLOCK: TEXT (LEFT) & BANNER (RIGHT) ---
-def get_base64_of_bin_file(bin_file):
-    if os.path.exists(bin_file):
-        with open(bin_file, 'rb') as f:
-            data = f.read()
-        return base64.b64encode(data).decode()
-    return None
+# --- NEW HEADER BLOCK: NATIVE STREAMLIT LAYOUT ---
+# Create two columns: Left (Text) gets 60% width, Right (Image) gets 40% width
+col_text, col_img = st.columns([6, 4], gap="large")
 
-banner_base64 = get_base64_of_bin_file("banner.jpg")
-
-# --- WRITING THE 'SPECIAL' TEXT ---
-# This text is written to be engaging, professional, and highlight your app's unique value.
-app_headline = "🏛️ Speak Up. We’ll Handle the Draft."
-app_description = """
-<p style='font-size: 1.1em; color: #aaaaaa; line-height: 1.6em;'>
-The Reminder India is your AI-powered civic assistant, bridging the gap between local problems and official solutions. 
-<br><br>
-<b>What makes us special?</b> We transform simple descriptions into powerful, formal petitions instantly. Draft in your native language, attach GPS evidence, and route complaints directly to authorities via Email, WhatsApp, or X.
-<br><br>
-<i>Don't just complain. Demand accountability.</i>
-</p>
-"""
-
-if banner_base64:
-    # This HTML uses Flexbox to place text on the left and image on the right
-    header_html = f"""
-    <div style="display: flex; align-items: center; gap: 2.5em; margin-bottom: 2em; padding: 2em; background-color: #1a1a1a; border-radius: 16px; border: 1px solid #333333; box-shadow: 0 4px 10px rgba(0,0,0,0.5);">
+with col_text:
+    st.markdown("""
+    <h1 style='margin-top: 0; padding-top: 0; font-size: 2.5em;'>🏛️ Speak Up. We’ll Handle the Draft.</h1>
+    <p style='font-size: 1.1em; color: #aaaaaa; line-height: 1.6em;'>
+        The Reminder India is your AI-powered civic assistant, bridging the gap between local problems and official solutions. 
+        <br><br>
+        <b>What makes us special?</b> We transform simple descriptions into powerful, formal petitions instantly. Draft in your native language, attach GPS evidence, and route complaints directly to authorities via Email, WhatsApp, or X.
+        <br><br>
+        <i>Don't just complain. Demand accountability.</i>
+    </p>
+    """, unsafe_allow_html=True)
+    
+with col_img:
+    # Native Streamlit image handling is much safer and automatically responsive
+    if os.path.exists("banner.jpg"):
+        st.image("banner.jpg", use_container_width=True)
+    else:
+        st.info("Banner image not found. Please ensure 'banner.jpg' is in the repository.")
         
-        <div style="flex: 6; text-align: left;">
-            <h1 style="color: white; margin-top:0; margin-bottom: 0.5em; font-size: 2.5em;">{app_headline}</h1>
-            {app_description}
-        </div>
-        
-        <div style="flex: 4; text-align: center;">
-            <img src="data:image/jpeg;base64,{banner_base64}" 
-                 style="max-width: 100%; max-height: 45vh; object-fit: contain; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); border: 2px solid #ffffff;">
-        </div>
-        
-    </div>
-    """
-else:
-    # Optimized Fallback if image doesn't exist
-    header_html = f"""
-    <div style="background-color: #1E1E1E; padding: 3em; border-radius: 16px; text-align: center; margin-bottom: 2em; border: 1px solid #333333;">
-        <h1 style="color: white; margin-top:0; font-size: 3em;">🏛️ The Reminder India</h1>
-        <h2 style="color: #dddddd; margin-bottom: 1em;">{app_headline}</h2>
-        <div style="max-width: 800px; margin: 0 auto;">{app_description}</div>
-    </div>
-    """
-
-st.markdown(header_html, unsafe_allow_html=True)
+st.markdown("<br>", unsafe_allow_html=True)
 # --- END OF NEW HEADER BLOCK ---
 
 # --- 🎥 NEW: VIDEO TUTORIAL EXPANDER ---
