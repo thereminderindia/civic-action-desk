@@ -181,10 +181,14 @@ with col_text:
     st.markdown(f"*{ui.get('header_action', '')}*")
     
 with col_img:
-    if os.path.exists("banner.jpg"):
-        st.image("banner.jpg", use_container_width=True)
+    banner_path = os.path.join("assets", "banner.jpg")
+    if os.path.exists(banner_path):
+        try:
+            st.image(banner_path, use_container_width=True)
+        except Exception as e:
+            st.error(f"Image found, but couldn't be loaded. Is it a valid JPG? Error: {e}")
     else:
-        st.info("Banner image not found. Please ensure 'banner.jpg' is uploaded to your repository.")
+        st.info("Banner image not found. Please ensure 'banner.jpg' is uploaded to your 'assets' folder.")
         
 st.markdown("<br>", unsafe_allow_html=True)
 
