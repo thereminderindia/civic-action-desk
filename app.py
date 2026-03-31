@@ -424,7 +424,12 @@ total_petitions = get_petition_count()
 if total_petitions > 0:
     st.caption(f"🔥 Join the movement: **{total_petitions}** civic petitions successfully dispatched via The Reminder India.")
 
-col_text, col_img = st.columns([6, 4], gap="large")
+# --- HEADER BLOCK ---
+display_title = app_titles.get(global_language, "The Reminder India")
+st.title(display_title)
+
+# Add the vertical_alignment parameter here!
+col_text, col_img = st.columns([6, 4], gap="large", vertical_alignment="center")
 
 with col_text:
     st.markdown(f"## {ui.get('header_title', '')}")
