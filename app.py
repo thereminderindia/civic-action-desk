@@ -620,11 +620,6 @@ if user_phone:
     elif len(user_phone) < 10:
         st.warning("⚠️ Please enter the full 10-digit number.")
 
-issue_category = st.selectbox(ui.get("category", "Category"), key=f"category_{st.session_state.reset_counter}", options=
-    ["", "Uncollected Garbage", "Broken Road / Pothole", "Clogged Drainage", "Non-functional Streetlight", "Contaminated Water", "Other"])
-
-issue_details = st.text_area(ui.get("desc", "Description"), key=f"details_{st.session_state.reset_counter}")
-
 with search_container:
         st.markdown("---")
         st.subheader(ui.get("find_email", "Find Email"))
