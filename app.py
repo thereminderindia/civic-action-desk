@@ -228,7 +228,15 @@ issue_category = st.selectbox("Quick Issue Select (Optional):", key=f"category_{
 
 issue_details = st.text_area("Describe the local problem (Specific details, location, etc.):", key=f"details_{st.session_state.reset_counter}")
 
-issue = f"Category: {issue_category}\nDetails: {issue_details}" if issue_category else issue_details
+# --- SMART ISSUE COMBINATION ---
+issue_parts = []
+if issue_category and issue_category != "Other":
+    issue_parts.append(f"Main Problem Category: {issue_category}")
+if issue_details.strip():
+    issue_parts.append(f"Specific Details, Landmarks & Extra Info: {issue_details.strip()}")
+
+issue = "\n\n".join(issue_parts)
+# -------------------------------
 
 # 6. STEP 3: GENERATION
 if st.button("🚀 1. Generate Official Letter", key=f"gen_{st.session_state.reset_counter}"):
@@ -259,7 +267,7 @@ if st.button("🚀 1. Generate Official Letter", key=f"gen_{st.session_state.res
             - City/Town: {selected_loc['Town']} (Transliterate to {target_language} script)
             - District: {selected_loc['District']} (Transliterate to {target_language} script)
             - PIN Code: {selected_loc['PIN']}
-            - Issue Category & Details: {issue}
+            - EXACT ISSUE DESCRIPTION: {issue}
             - GPS Link Available: {maps_url}
             - Evidence Attached: {'Yes' if has_evidence else 'No'}
 
@@ -270,6 +278,10 @@ if st.button("🚀 1. Generate Official Letter", key=f"gen_{st.session_state.res
             4. A clear, formal Subject line.
             5. A formal Salutation (e.g., Respected Sir/Madam).
             6. Write 2-3 professional paragraphs explaining the issue. 
+               - CRITICAL RULE FOR OPENING SENTENCE: You must smoothly introduce the problem in the first sentence.
+               - IF a "Main Problem Category" is provided, combine it with the details (e.g., "I am writing to formally bring to your attention the issue of a [Main Category] in my locality, specifically [Specific Details].").
+               - IF ONLY "Specific Details" are provided (no category), deduce the main issue from the user's text yourself and frame it naturally (e.g., "I am writing to formally bring to your attention a pressing issue in my locality regarding [Your deduced topic], specifically [Specific Details].").
+               - Never list the details as bullet points. Weave everything into natural paragraphs.
                - If a GPS Link is provided, write a sentence mentioning the exact location can be tracked via the map link.
                - If Evidence Attached is 'Yes', write a sentence stating that photo/video evidence is attached to this email.
             7. A formal closing (e.g., Sincerely) and the Sender's name.
@@ -298,6 +310,7 @@ if st.button("🚀 1. Generate Official Letter", key=f"gen_{st.session_state.res
 if "letter" in st.session_state:
     st.divider()
     st.subheader("📬 Step 4: Final Review & Email Controls")
+    
     # --- DYNAMIC HEIGHT CALCULATION ---
     # Count actual line breaks
     lines_by_newline = st.session_state.letter.count('\n') + 1
