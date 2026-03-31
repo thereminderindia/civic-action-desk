@@ -109,13 +109,7 @@ st.set_page_config(page_title="The Reminder India", page_icon="🏛️", layout=
 local_css()
 
 # Header with Logo
-col1, col2 = st.columns([1, 4])
-with col1:
-    # Ensure your logo is actually named 'logo.png' and is inside the 'assets' folder
-    if os.path.exists("assets/logo.png"):
-        st.image("assets/logo.png", width=100)
-with col2:
-    st.title("The Reminder India")
+st.title("The Reminder India")
 
 # --- INITIALIZE RESET COUNTER ---
 if "reset_counter" not in st.session_state:
