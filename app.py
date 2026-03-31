@@ -204,23 +204,11 @@ def get_translated_slides(language):
 # 3. INTERFACE & SIDEBAR
 st.set_page_config(page_title="The Reminder India", page_icon="🏛️", layout="wide")
 
-# --- CUSTOM CSS FOR SIDEBAR COMPACTION & HIDING INPUT INSTRUCTIONS ---
+# --- CUSTOM CSS (Cleaned up to only hide the instructions, allowing Streamlit to naturally space the sidebar) ---
 st.markdown("""
     <style>
         div[data-testid="InputInstructions"] {
             display: none !important;
-        }
-        /* Drastically reduce vertical spacing in the Sidebar */
-        section[data-testid="stSidebar"] div.stVerticalBlock {
-            gap: 0.2rem !important;
-        }
-        section[data-testid="stSidebar"] hr {
-            margin-top: 0.5rem !important;
-            margin-bottom: 0.5rem !important;
-        }
-        section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] h3 {
-            padding-top: 0.2rem !important;
-            padding-bottom: 0.2rem !important;
         }
     </style>
 """, unsafe_allow_html=True)
