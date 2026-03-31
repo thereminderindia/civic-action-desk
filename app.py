@@ -298,8 +298,19 @@ if st.button("🚀 1. Generate Official Letter", key=f"gen_{st.session_state.res
 if "letter" in st.session_state:
     st.divider()
     st.subheader("📬 Step 4: Final Review & Email Controls")
-    st.text_area("Letter Content:", value=st.session_state.letter, height=400, key=f"review_text_{st.session_state.reset_counter}")
+    # --- DYNAMIC HEIGHT CALCULATION ---
+    # Count actual line breaks
+    lines_by_newline = st.session_state.letter.count('\n') + 1
+    # Estimate wrapped lines (roughly 80 characters per line on a standard screen)
+    lines_by_length = len(st.session_state.letter) // 80 
+    # Use whichever is larger to ensure nothing gets cut off
+    total_estimated_lines = max(lines_by_newline, lines_by_length)
     
+    # Calculate height: ~25 pixels per line, with a minimum height of 300px
+    dynamic_height = max(300, total_estimated_lines * 25)
+
+    st.text_area("Letter Content:", value=st.session_state.letter, height=dynamic_height, key=f"review_text_{st.session_state.reset_counter}")
+        
     st.markdown("##### 📨 Email Routing")
     col_to, col_cc = st.columns(2)
     with col_to:
