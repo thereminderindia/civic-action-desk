@@ -108,9 +108,6 @@ st.set_page_config(page_title="The Reminder India", page_icon="🏛️", layout=
 # Call the CSS function at the start
 local_css()
 
-# Header with Logo
-st.title("The Reminder India")
-
 # --- INITIALIZE RESET COUNTER ---
 if "reset_counter" not in st.session_state:
     st.session_state.reset_counter = 0
@@ -374,6 +371,27 @@ st.sidebar.link_button("📄 Privacy Policy", "https://sites.google.com/view/htt
 pincode_df = load_pincode_db()
 
 # --- HEADER BLOCK ---
+# Mini-dictionary to translate the brand name without editing 22 JSON files!
+app_titles = {
+    "English": "The Reminder India",
+    "Hindi (हिन्दी)": "द रिमाइंडर इंडिया",
+    "Bengali (বাংলা)": "দ্য রিমাইন্ডার ইন্ডিয়া",
+    "Marathi (मराठी)": "द रिमाइंडर इंडिया",
+    "Telugu (తెలుగు)": "ది రిమైండర్ ఇండియా",
+    "Tamil (தமிழ்)": "தி ரிமைண்டர் இந்தியா",
+    "Gujarati (ગુજરાતી)": "ધ રિમાઇન્ડર ઇન્ડિયા",
+    "Urdu (اردو)": "دی ریمائنڈر انڈیا",
+    "Kannada (ಕನ್ನಡ)": "ದಿ ರಿಮೈಂಡರ್ ಇಂಡಿಯಾ",
+    "Odia (ଓଡ଼ିଆ)": "ଦି ରିମାଇଣ୍ଡର ଇଣ୍ଡିଆ",
+    "Malayalam (മലയാളം)": "ദി റിമൈൻഡർ ഇന്ത്യ",
+    "Punjabi (ਪੰਜਾਬੀ)": "ਦ ਰਿਮਾਇੰਡਰ ਇੰਡੀਆ",
+    "Assamese (অসমীয়া)": "দ্য ৰিমাইণ্ডাৰ ইণ্ডিয়া"
+}
+
+# Pull the correct title, defaulting to English if the language isn't in the list above
+display_title = app_titles.get(global_language, "The Reminder India")
+st.title(display_title)
+
 col_text, col_img = st.columns([6, 4], gap="large")
 
 with col_text:
@@ -383,9 +401,7 @@ with col_text:
     st.markdown(f"*{ui.get('header_action', '')}*")
     
 with col_img:
-    # We changed the name here to force Streamlit to load it fresh!
     banner_path = os.path.join("assets", "main_banner.png")
-    
     if os.path.exists(banner_path):
         try:
             st.image(banner_path, use_container_width=True)
