@@ -181,7 +181,6 @@ def generate_official_letter(user_details, issue_description, location_info, glo
     and handles the translation formatting required by the app.
     """
     
-    # Strict translation rules based on selected language
     if global_language == "English":
         from_label = "From"
         to_label = "To"
@@ -191,7 +190,6 @@ def generate_official_letter(user_details, issue_description, location_info, glo
         to_label = "सेवा में" if "Hindi" in global_language else f"the translation of 'To' in {global_language}"
         translation_rule = f"The entire letter MUST be in {global_language}. You MUST translate or transliterate ALL English/regional names, dates, cities, and structural elements into the native script of {global_language}."
 
-    # This is the "Voice" of the app
     system_prompt = f"""
     You are a Senior Civic Advocate in India. Draft a formal petition to the Municipal Commissioner regarding a public grievance. 
     Use a professional, firm, and legalistic tone.
@@ -199,14 +197,16 @@ def generate_official_letter(user_details, issue_description, location_info, glo
     CRITICAL RULE: {translation_rule}
     """
     
-    # This is the "Data" from the user mapped to formatting rules
     user_prompt = f"""
     Here is the raw data for the letter:
     - Date: {current_date}
     - Reporter Name: {user_details['name']}
     - Reporter Phone: {user_details['phone']}
     - Recipient Title: The Municipal Commissioner
-    - Location: {location_info['town']}, District: {location_info['district']}, PIN: {location_info['pin']}
+    - Exact Address Block to Use: 
+      {location_info['town']}, {location_info['district'].upper()}
+      {location_info['state']}
+      PIN-{location_info['pin']}
     - Issue Category: {user_details['category']}
     - Description of Issue: {issue_description['text']}
     - GPS Link Available: {maps_url}
@@ -215,7 +215,7 @@ def generate_official_letter(user_details, issue_description, location_info, glo
     FORMAT INSTRUCTIONS:
     1. Date at the top.
     2. The "From" section (Sender name and phone). You MUST use '{from_label}' as the exact label for this section.
-    3. The "To" section. You MUST use '{to_label}' as the exact label for this section. CRITICAL RULE: You must use the EXACT Location/Town name provided ({location_info['town']}). Do NOT simplify it or substitute it with just the District name.
+    3. The "To" section. You MUST use '{to_label}' as the exact label. CRITICAL RULE: You MUST format the recipient address EXACTLY as provided in the 'Exact Address Block to Use' section. Do not alter, shorten, or remove the Town, District, State, or PIN formatting.
     4. A clear, formal Subject line.
     5. A formal Salutation (e.g., Respected Sir/Madam).
     6. Write a full letter with 2-3 professional paragraphs explaining the issue. Include a strong 7-day resolution demand.
@@ -227,7 +227,6 @@ def generate_official_letter(user_details, issue_description, location_info, glo
     - END WITH: 'SUGGESTED_EMAIL: ' (This specific keyword MUST remain exactly 'SUGGESTED_EMAIL:' in English, followed by the exact official email if you know it, otherwise leave blank).
     """
     
-    # Call the AI model
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
@@ -573,14 +572,16 @@ if st.button(ui.get("gen_btn", "Generate"), key=f"gen_{st.session_state.reset_co
             try:
                 # --- CALL THE NEW FUNCTION HERE ---
                 res_content = generate_official_letter(
-                    user_details=user_details_dict, 
-                    issue_description=issue_description_dict, 
-                    location_info=location_info_dict,
-                    global_language=global_language,
-                    current_date=current_date,
-                    maps_url=maps_url,
-                    has_evidence=has_evidence
-                )
+                    # Package the user data into the requested dictionaries
+            # Package the user data into the requested dictionaries
+            user_details_dict = {"name": user_name, "phone": p_val, "category": issue_category}
+            issue_description_dict = {"text": issue}
+            location_info_dict = {
+                "town": selected_loc['Town'], 
+                "district": selected_loc['District'], 
+                "state": selected_loc['State'], 
+                "pin": selected_loc['PIN']
+            }
                 
                 res_content = res_content.replace("```", "").strip()
                 st.session_state.letter = res_content.split("SUGGESTED_EMAIL:")[0].strip()
