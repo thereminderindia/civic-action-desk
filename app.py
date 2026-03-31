@@ -57,15 +57,25 @@ def create_pdf(text):
         pdf = FPDF()
         pdf.add_page()
         pdf.set_font("Arial", size=11)
+        
+        # Set a normal line height (6 is standard single-spacing for 11pt font)
+        line_height = 6
+        
         for line in text.split('\n'):
-            if current_date in line:
-                pdf.cell(0, 10, txt=line, ln=True, align='R')
+            if line.strip() == "":
+                # When the AI creates a paragraph break (an empty line), 
+                # this adds a perfectly sized blank space in the PDF
+                pdf.ln(line_height)
+            elif current_date in line:
+                # Keep the date neatly aligned to the right
+                pdf.cell(0, line_height, txt=line, ln=True, align='R')
             else:
-                pdf.multi_cell(0, 10, txt=line, align='L')
+                # Print standard text with natural text-wrapping
+                pdf.multi_cell(0, line_height, txt=line, align='L')
+                
         return pdf.output(dest='S').encode('latin-1', 'ignore')
     except Exception as e:
         return None
-
 
 # --- AI TRANSLATION ENGINE FOR UI ---
 @st.cache_data(show_spinner=False)
@@ -104,6 +114,7 @@ def get_translated_ui(language):
         "dl_txt": "📥 Download Letter",
         "send_btn": "📧 Send Official Email Now",
         "wa_routing": "🟢 WhatsApp Routing (Direct Message)",
+        "wa_instruction": "If you know the official WhatsApp numbers for your local departments, enter them below separated by commas (e.g., 9876543210, 8877665544).",
         "wa_num": "Official 10-Digit WhatsApp Number(s):",
         "x_routing": "🐦 Public Amplification (X / Twitter)",
         "x_handle": "Official's X Handle (e.g., @KandhlaPalika):",
@@ -587,6 +598,9 @@ if "letter" in st.session_state:
     st.markdown("---")
     st.markdown(f"##### {ui['wa_routing']}")
     
+    # This brings back your missing comma-separation instructions!
+    st.caption(ui["wa_instruction"])
+    
     wa_numbers_input = st.text_input(ui["wa_num"], key=f"wa_multi_{st.session_state.reset_counter}")
     
     if wa_numbers_input:
@@ -605,6 +619,7 @@ if "letter" in st.session_state:
         
         if valid_numbers:
             encoded_letter = urllib.parse.quote(st.session_state.letter)
+            # This creates a beautiful row of buttons for each valid number entered
             btn_cols = st.columns(min(len(valid_numbers), 3)) 
             
             for i, num in enumerate(valid_numbers):
