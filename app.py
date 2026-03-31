@@ -103,7 +103,7 @@ if banner_base64:
     header_banner_html = f"""
     <div style="margin-bottom: 2em; text-align: center;">
         <img src="data:image/jpeg;base64,{banner_base64}" 
-             style="width: 100%; height: auto; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); border: 2px solid #ffffff;">
+             style="width: 100%; height: 100%; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); border: 2px solid #ffffff;">
     </div>
     """
 else:
