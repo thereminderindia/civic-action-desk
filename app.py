@@ -530,30 +530,35 @@ issue_category = st.selectbox(ui.get("category", "Category"), key=f"category_{st
 issue_details = st.text_area(ui.get("desc", "Description"), key=f"details_{st.session_state.reset_counter}")
 
 with search_container:
-    st.markdown("---")
-    st.subheader(ui.get("find_email", "Find Email"))
-    
-    if selected_loc:
-        dept_keywords = "Municipal Commissioner OR Nagar Palika"
-        if issue_category == "Uncollected Garbage":
-            dept_keywords = "Nagar Nigam OR Municipal Corporation Sanitation"
-        elif issue_category == "Broken Road / Pothole":
-            dept_keywords = "PWD Executive Engineer OR Municipal Corporation"
-        elif issue_category == "Clogged Drainage":
-            dept_keywords = "Sanitary Inspector OR Nagar Nigam"
-        elif issue_category == "Non-functional Streetlight":
-            dept_keywords = "Electricity Department OR Junior Engineer JE"
-        elif issue_category == "Contaminated Water":
-            dept_keywords = "Water Supply Department OR Jal Board"
-
-        search_query = f"official email {dept_keywords} {selected_loc['Town']} {selected_loc['District']} site:.gov.in OR site:.nic.in"
-        # Switched to quote_plus for safer Google Search URLs
-        google_url = f"https://www.google.com/search?q={urllib.parse.quote_plus(search_query)}"
+        st.markdown("---")
+        st.subheader(ui.get("find_email", "Find Email"))
         
-        st.link_button(f"🌐 Search for {selected_loc['Town']} Email", google_url)
-    else:
-        # Shows a helpful message before they enter a PIN
-        st.caption("📍 Enter a 6-digit PIN in Step 1 to unlock the official email search tool.")
+        if selected_loc:
+            # 1. Simplified, highly-targeted department keywords
+            if issue_category == "Uncollected Garbage":
+                dept = "Nagar Nigam OR Municipal Corporation"
+            elif issue_category == "Broken Road / Pothole":
+                dept = "PWD Executive Engineer"
+            elif issue_category == "Clogged Drainage":
+                dept = "Nagar Palika OR Sanitary Inspector"
+            elif issue_category == "Non-functional Streetlight":
+                dept = "Electricity Department OR Junior Engineer"
+            elif issue_category == "Contaminated Water":
+                dept = "Water Supply Department OR Jal Board"
+            else:
+                dept = "Municipal Commissioner OR Nagar Palika"
+
+            # 2. Search by DISTRICT instead of Town (Officials sit at the District level)
+            # 3. Dropped the confusing 'site:.gov.in' logic to allow legitimate local contact directories
+            search_query = f'"{selected_loc["District"]}" {dept} official email contact'
+            google_url = f"https://www.google.com/search?q={urllib.parse.quote_plus(search_query)}"
+            
+            # 4. Clean the "BO/SO" jargon just for the button display so it looks clean
+            display_town = selected_loc['Town'].replace(" BO", "").replace(" SO", "").replace(" HO", "").strip()
+            
+            st.link_button(f"🌐 Search Email for {display_town}", google_url)
+        else:
+            st.caption("📍 Enter a 6-digit PIN in Step 1 to unlock the official email search tool.")
 
 issue_parts = []
 if issue_category and issue_category != "Other":
