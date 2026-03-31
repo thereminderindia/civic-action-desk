@@ -35,8 +35,8 @@ def local_css():
 
     /* Sidebar Styling */
     section[data-testid="stSidebar"] {
-        background-color: #f8f9fa;
-        border-right: 1px solid #e0e0e0;
+        /* Removed the hardcoded white background so it matches your theme */
+        border-right: 1px solid #333333; 
     }
 
     /* Professional Button Styling */
