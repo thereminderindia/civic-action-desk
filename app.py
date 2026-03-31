@@ -372,6 +372,7 @@ pincode_df = load_pincode_db()
 
 # --- HEADER BLOCK ---
 # Mini-dictionary to translate the brand name without editing 22 JSON files!
+# Mini-dictionary to perfectly transliterate the brand name into all 23+ scripts!
 app_titles = {
     "English": "The Reminder India",
     "Hindi (हिन्दी)": "द रिमाइंडर इंडिया",
@@ -385,7 +386,20 @@ app_titles = {
     "Odia (ଓଡ଼ିଆ)": "ଦି ରିମାଇଣ୍ଡର ଇଣ୍ଡିଆ",
     "Malayalam (മലയാളം)": "ദി റിമൈൻഡർ ഇന്ത്യ",
     "Punjabi (ਪੰਜਾਬੀ)": "ਦ ਰਿਮਾਇੰਡਰ ਇੰਡੀਆ",
-    "Assamese (অসমীয়া)": "দ্য ৰিমাইণ্ডাৰ ইণ্ডিয়া"
+    "Assamese (অসমীয়া)": "দ্য ৰিমাইণ্ডাৰ ইণ্ডিয়া",
+    "Maithili (मैथिली)": "द रिमाइंडर इंडिया",
+    "Santali (संताली)": "द रिमाइंडर इंडिया",
+    "Kashmiri (کأشُر)": "دی ریمائنڈر انڈیا",
+    "Kashmiri (کٲशُر)": "دی ریمائنڈر انڈیا", 
+    "Nepali (नेपाली)": "द रिमाइंडर इन्डिया",
+    "Konkani (कोंकणी)": "द रिमाइंडर इंडिया",
+    "Konkani (कोंकਣੀ)": "द रिमाइंडर इंडिया", 
+    "Sindhi (سنڌي)": "دي ريمائنڊر انڊيا",
+    "Dogri (डोगरी)": "द रिमाइंडर इंडिया",
+    "Manipuri (মণিপুরী)": "দি রিমাইন্ডার ইন্ডিয়া",
+    "Manipuri (মৈতৈলোন)": "দি রিমাইন্ডার ইন্ডিয়া", 
+    "Bodo (बर')": "द रिमाइंडर इंडिया",
+    "Sanskrit (संस्कृतम्)": "द रिमाइंडर इंडिया"
 }
 
 # Pull the correct title, defaulting to English if the language isn't in the list above
