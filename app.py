@@ -657,22 +657,30 @@ if issue_details.strip():
 issue = "\n\n".join(issue_parts)
 
 # 6. STEP 3: GENERATION
-if st.session_state.gen_count >= 3:
+st.markdown("---")
+
+# --- ADMIN BACKDOOR ---
+# If you type exactly this in the Name box, the limit disappears!
+is_admin = (user_name.strip() == "Admin TRI") 
+
+# Now we check: Are they over the limit AND are they NOT an admin?
+if st.session_state.gen_count >= 3 and not is_admin:
     st.error("🛑 Daily Limit Reached: To keep this free community service running, we limit users to 3 petitions per session. Please try again tomorrow!")
 else:
     if st.button(ui.get("gen_btn", "Generate"), key=f"gen_{st.session_state.reset_counter}"):
-        # 1. Increase the counter immediately when clicked
-        st.session_state.gen_count += 1
         
-        # 2. Clear out the old letter if there is one
+        # 1. Clear out the old letter if there is one
         if "letter" in st.session_state:
             del st.session_state["letter"]
             
-        # 3. Check for errors
+        # 2. Check for errors FIRST (Admins still need to fill out the form!)
         if not user_name or not selected_loc or not issue.strip() or len(user_pin) != 6:
             st.error("⚠️ Please complete all fields correctly.")
         else:
-            # 4. Actually generate the letter!
+            # 3. Increase the counter ONLY if there are no errors
+            st.session_state.gen_count += 1
+            
+            # 4. Actually generate the letter
             with st.spinner(f"Drafting formal petition in {global_language}..."):
                 p_val = user_phone.strip()
                 maps_url = st.session_state.get('maps_link', "")
