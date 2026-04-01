@@ -387,10 +387,11 @@ def get_petition_count():
 # --- GOOGLE SHEETS LOGGER ---
 def log_petition_to_gsheets(name, town, district, category, recipient_contact, mode):
     try:
-        # 1. READ: Pull current data
-        existing_data = conn.read(worksheet="Database")
+        # FIX: Added ttl=0. This forces Streamlit to pull the LIVE sheet, 
+        # ignoring the cache, so it never accidentally overwrites recent entries!
+        existing_data = conn.read(worksheet="Database", ttl=0) 
         
-        # 2. CREATE: Prepare the new row with the new columns
+        # 2. CREATE: Prepare the new row
         new_entry = pd.DataFrame([{
             "Timestamp": datetime.now(ist_timezone).strftime("%Y-%m-%d %H:%M:%S"),
             "Reporter": name,
@@ -398,8 +399,8 @@ def log_petition_to_gsheets(name, town, district, category, recipient_contact, m
             "District": district,
             "Category": category,
             "Status": "Dispatched",
-            "Recipient_Contact": recipient_contact, # Stores Email or Phone
-            "Mode": mode                             # Stores "Email" or "WhatsApp"
+            "Recipient_Contact": recipient_contact, 
+            "Mode": mode                            
         }])
         
         # 3. APPEND & UPDATE
@@ -944,7 +945,25 @@ if "letter" in st.session_state:
     encoded_tweet = urllib.parse.quote(tweet_text)
     tw_link = f"https://twitter.com/intent/tweet?text={encoded_tweet}"
     
-    st.link_button(ui.get("x_btn", "Post to X"), tw_link, use_container_width=True)
+    # FIX: Changed from link_button to a standard button so we can log it first!
+    if st.button(ui.get("x_btn", "Log & Post to X"), key=f"tw_btn_{st.session_state.reset_counter}", use_container_width=True):
+        
+        # Determine what to log based on if they entered a specific handle
+        contact_logged = tw_handle.strip() if tw_handle.strip() != "@" else "General Public"
+        
+        # 1. Log to Google Sheets
+        log_petition_to_gsheets(
+            name=user_name,
+            town=selected_loc['Town'],
+            district=selected_loc['District'],
+            category=issue_category,
+            recipient_contact=contact_logged, 
+            mode="X/Twitter"      
+        )
+        
+        # 2. Reveal the clickable link to open X
+        x_button_css = "display: block; width: 100%; text-align: center; background-color: #000000; color: white; padding: 10px; border-radius: 8px; text-decoration: none; font-weight: bold; margin-top: 10px;"
+        st.markdown(f'<a href="{tw_link}" target="_blank" style="{x_button_css}">🚀 Click to Open X (Twitter)</a>', unsafe_allow_html=True)
 
     st.markdown("<br><br>", unsafe_allow_html=True)
     st.markdown("---")
