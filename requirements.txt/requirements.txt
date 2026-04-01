@@ -1,6 +1,0 @@
-openai
-fpdf2
-pandas
-st-gsheets-connection
-streamlit-js-eval
-requests
