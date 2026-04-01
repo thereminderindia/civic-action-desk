@@ -860,16 +860,17 @@ if "letter" in st.session_state:
                             smtp.quit()
                             
                             # --- LOGGING TO GSHEET AFTER SUCCESSFUL SEND ---
-                            st.success("✅ Official Letter Sent! Please check your email for your receipt.")
-                            official_email = selected_loc.get('Email', 'Not Found')
                             
+                            st.success("✅ Official Letter Sent! Please check your email for your receipt.")
+                            # FIX: Log the 'rec_to' variable (what the user actually typed) 
+                            # instead of trying to pull it from the location dictionary!
                             log_petition_to_gsheets(
-                                name=user_name,
-                                town=selected_loc['Town'],
-                                district=selected_loc['District'],
-                                category=issue_category,
-                                recipient_contact=official_email,
-                                mode="Email"
+                            name=user_name,
+                            town=selected_loc['Town'],
+                            district=selected_loc['District'],
+                            category=issue_category,
+                            recipient_contact=rec_to,   # <--- Updated this line!
+                            mode="Email"
                             )
                             st.balloons()
 
