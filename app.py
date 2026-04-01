@@ -142,7 +142,10 @@ def load_pincode_db():
     try:
         df = pd.read_csv("pincodes.csv")
         df.columns = [c.strip().lower() for c in df.columns]
-        df['pincode'] = df['pincode'].astype(str)
+        
+        # FIX: Force to string, remove any ".0" at the end, and strip spaces
+        df['pincode'] = df['pincode'].astype(str).str.replace(r'\.0$', '', regex=True).str.strip()
+        
         return df
     except:
         return None
@@ -508,7 +511,10 @@ with pin_col:
 
 selected_loc = None
 if user_pin and len(user_pin) == 6 and pincode_df is not None:
-    matches = pincode_df[pincode_df['pincode'] == str(user_pin)]
+    # FIX: Strip user input to ensure no accidental spaces are typed
+    clean_user_pin = str(user_pin).strip()
+    matches = pincode_df[pincode_df['pincode'] == clean_user_pin]
+    
     if not matches.empty:
         with details_col:
             office_list = matches['officename'].unique().tolist()
@@ -527,9 +533,13 @@ if user_pin and len(user_pin) == 6 and pincode_df is not None:
                 "Town": clean_town, 
                 "District": row['district'], 
                 "State": clean_state, 
-                "PIN": user_pin
+                "PIN": clean_user_pin
             }
             st.success(f"✅ Area: {selected_loc['Town']}, {selected_loc['District']}")
+    else:
+        # FIX: Add this so it isn't just a blank space when a pin fails!
+        with details_col:
+            st.error(f"PIN {clean_user_pin} not found in database.")
 
 col_gps, col_files = st.columns(2)
 with col_gps:
