@@ -848,15 +848,18 @@ if "letter" in st.session_state:
                             smtp.send_message(msg)
                             smtp.quit()
                             
-        # --- SEND BUTTON LOGIC ---
-        try:  # <--- LINE 852 (The start of the safety net)
-            # All these lines must be indented 4 spaces to the right
-            st.success("✅ Official Letter Sent! Please check your email.")
+        # --- STEP 3: SEND BUTTON ---
+    if st.button("📧 Send Official Email Now"):
+        try:
+            # Everything inside the 'try' must be 4 spaces in
+            # (Your email sending logic goes here)
             
-            # Grab the email from your data
+            st.success("✅ Official Letter Sent! Please check your email for your receipt.")
+            
+            # Define the recipient from your selected location data
             official_email = selected_loc.get('Email', 'Not Found')
             
-            # Log the details to your Google Sheet
+            # Log the action to your "Database" sheet
             log_petition_to_gsheets(
                 name=user_name,
                 town=selected_loc['Town'],
@@ -865,12 +868,12 @@ if "letter" in st.session_state:
                 recipient_contact=official_email,
                 mode="Email"
             )
+            
             st.balloons()
 
-        except Exception as e:  # <--- THIS MUST BE PERFECTLY ALIGNED WITH 'try'
-            # If anything inside the 'try' block fails, this runs instead
-            st.error(f"Error: {e}")
-
+        except Exception as e:
+            # This 'except' MUST be perfectly aligned with the 'try' above
+            st.error(f"❌ Error during sending/logging: {e}")
     # 1. Define the recipient's phone number (get this from your data or sheet)
     official_whatsapp_no = "9876543210" # Replace with the real number variable
 
