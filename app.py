@@ -848,32 +848,74 @@ if "letter" in st.session_state:
                             smtp.send_message(msg)
                             smtp.quit()
                             
-        # --- STEP 3: SEND BUTTON ---
-    if st.button("📧 Send Official Email Now"):
-        try:
-            # Everything inside the 'try' must be 4 spaces in
-            # (Your email sending logic goes here)
-            
-            st.success("✅ Official Letter Sent! Please check your email for your receipt.")
-            
-            # Define the recipient from your selected location data
-            official_email = selected_loc.get('Email', 'Not Found')
-            
-            # Log the action to your "Database" sheet
-            log_petition_to_gsheets(
-                name=user_name,
-                town=selected_loc['Town'],
-                district=selected_loc['District'],
-                category=issue_category,
-                recipient_contact=official_email,
-                mode="Email"
-            )
-            
-            st.balloons()
+        # --- THE CORRECTED EMAIL SEND BUTTON LOGIC ---
+        if st.button(ui.get("send_btn", "Send"), key=f"send_email_{st.session_state.reset_counter}"):
+            combined_bcc_list = []
+            if rec_bcc: combined_bcc_list.append(rec_bcc)
+            if user_receipt: combined_bcc_list.append(user_receipt)
+            final_bcc_string = ", ".join(combined_bcc_list)
 
-        except Exception as e:
-            # This 'except' MUST be perfectly aligned with the 'try' above
-            st.error(f"❌ Error during sending/logging: {e}")
+            if not is_valid_email(rec_to) or not is_valid_email(rec_cc) or not is_valid_email(final_bcc_string):
+                st.error("❌ Invalid email format detected.")
+            elif not rec_to:
+                st.error("❌ Primary Recipient (To) is required.")
+            else:
+                vault_files = st.session_state.get("file_vault", [])
+                total_size = sum([len(f["bytes"]) for f in vault_files]) if vault_files else 0
+                
+                if total_size > 20 * 1024 * 1024:
+                    st.error("⚠️ Attachments are too large! Please compress your video or use a photo instead (Max 20MB).")
+                else:
+                    with st.spinner("Preparing secure attachments & sending email..."):
+                        try:
+                            msg = MIMEMultipart()
+                            msg['Subject'] = f"CIVIC COMPLAINT: {selected_loc['Town']} - {user_name}"
+                            msg['From'] = SENDER_EMAIL
+                            msg['To'] = rec_to
+                            if rec_cc: msg['Cc'] = rec_cc
+                            if final_bcc_string: msg['Bcc'] = final_bcc_string
+                            
+                            msg.attach(MIMEText(st.session_state.letter, 'plain'))
+                            
+                            # (Attachment logic remains identical...)
+                            if vault_files:
+                                for f_data in vault_files:
+                                    file_bytes = f_data["bytes"]
+                                    mime_type = f_data["mime"]
+                                    if '/' not in mime_type: mime_type = 'application/octet-stream'
+                                    maintype, subtype = mime_type.split('/', 1)
+                                    clean_filename = f_data["name"].split("/")[-1].split("\\")[-1]
+                                    if '.' not in clean_filename:
+                                        ext = mimetypes.guess_extension(mime_type)
+                                        clean_filename += ext if ext else ".jpg" 
+                                    part = MIMEBase(maintype, subtype)
+                                    part.set_payload(file_bytes)
+                                    encoders.encode_base64(part) 
+                                    part.add_header('Content-Disposition', f'attachment; filename="{clean_filename}"')
+                                    msg.attach(part)
+                            
+                            smtp = smtplib.SMTP_SSL('smtp.gmail.com', 465)
+                            smtp.login(SENDER_EMAIL, APP_PASSWORD)
+                            smtp.send_message(msg)
+                            smtp.quit()
+                            
+                            # --- LOGGING TO GSHEET AFTER SUCCESSFUL SEND ---
+                            st.success("✅ Official Letter Sent! Please check your email for your receipt.")
+                            official_email = selected_loc.get('Email', 'Not Found')
+                            
+                            log_petition_to_gsheets(
+                                name=user_name,
+                                town=selected_loc['Town'],
+                                district=selected_loc['District'],
+                                category=issue_category,
+                                recipient_contact=official_email,
+                                mode="Email"
+                            )
+                            st.balloons()
+
+                        except Exception as e:
+                            st.error(f"❌ Error during sending/logging: {e}")
+
     # 1. Define the recipient's phone number (get this from your data or sheet)
     official_whatsapp_no = "9876543210" # Replace with the real number variable
 
@@ -883,7 +925,7 @@ if "letter" in st.session_state:
     # --- MULTI-WHATSAPP ROUTING ---
     st.markdown("---")
     st.markdown(f"##### {ui.get('wa_routing', 'WA Routing')}")
-    st.caption(ui.get("wa_instruction", ""))
+    st.caption(ui.get("wa_instruction", "Enter 10-digit WhatsApp numbers separated by commas to send via WhatsApp."))
     
     wa_numbers_input = st.text_input(ui.get("wa_num", "WA Num"), key=f"wa_multi_{st.session_state.reset_counter}")
     
@@ -908,23 +950,18 @@ if "letter" in st.session_state:
             for i, num in enumerate(valid_numbers):
                 wa_link = f"https://wa.me/91{num}?text={encoded_letter}"
                 with btn_cols[i % 3]:
-                    st.link_button(f"🟢 Send to {num}", wa_link, use_container_width=True)
-    
-    # --- Inside your WhatsApp Button block ---
-    if st.button("Send via WhatsApp"):
-    # (Your WhatsApp URL generation logic here)
-    
-        log_petition_to_gsheets(
-        name=user_name,
-        town=selected_loc['Town'],
-        district=selected_loc['District'],
-        category=issue_category,
-        recipient_contact=official_whatsapp_no, # This logs the phone number
-        mode="WhatsApp"                         # This logs that it was WhatsApp
-    )
-    
-    # Then open the WhatsApp link
-    st.markdown(f'<a href="{whatsapp_url}" target="_blank">Click here to open WhatsApp</a>', unsafe_allow_html=True)
+                    # Using a button here so we can trigger the python logging before opening the link
+                    if st.button(f"🟢 Send to {num}", key=f"wa_btn_{num}_{st.session_state.reset_counter}"):
+                        log_petition_to_gsheets(
+                            name=user_name,
+                            town=selected_loc['Town'],
+                            district=selected_loc['District'],
+                            category=issue_category,
+                            recipient_contact=num, 
+                            mode="WhatsApp"      
+                        )
+                        st.success(f"✅ Action recorded!")
+                        st.markdown(f'<a href="{wa_link}" target="_blank">👉 Click here to open WhatsApp for {num}</a>', unsafe_allow_html=True)
 
     log_petition_to_gsheets(...)
     st.success("✅ Action recorded! Click the link below to send.") # Added this\
