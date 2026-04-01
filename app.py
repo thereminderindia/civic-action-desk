@@ -409,9 +409,15 @@ def log_petition_to_gsheets(name, town, district, category, recipient_contact, m
         st.error(f"❌ Database Error: {e}")
 
 total_petitions = get_petition_count()
-# Add a nice visual flair above the main title
 if total_petitions > 0:
-    st.caption(f"🔥 Join the movement: **{total_petitions}** civic petitions successfully dispatched via The Reminder India.")
+    # Fetch the translated text from your locale files, or default to English
+    counter_template = ui.get(
+        "petition_counter", 
+        "🔥 Join the movement: **{count}** civic petitions successfully dispatched via The Reminder India."
+    )
+    
+    # Replace the {count} placeholder with the actual number
+    st.caption(counter_template.replace("{count}", str(total_petitions)))
 
 # --- HEADER BLOCK ---
 # We create the centered columns FIRST
@@ -894,7 +900,7 @@ if "letter" in st.session_state:
             for i, num in enumerate(valid_numbers):
                 wa_link = f"https://wa.me/91{num}?text={encoded_letter}"
                 with btn_cols[i % 3]:
-                    # Using a button here so we can trigger the python logging before opening the link
+                    # The initial log button
                     if st.button(f"🟢 Send to {num}", key=f"wa_btn_{num}_{st.session_state.reset_counter}"):
                         log_petition_to_gsheets(
                             name=user_name,
@@ -904,12 +910,11 @@ if "letter" in st.session_state:
                             recipient_contact=num, 
                             mode="WhatsApp"      
                         )
-                        st.success(f"✅ Action recorded!")
-                        st.markdown(f'<a href="{wa_link}" target="_blank">👉 Click here to open WhatsApp for {num}</a>', unsafe_allow_html=True)
+                        # Instead of plain text, we generate a seamless green button!
+                        button_css = "display: block; width: 100%; text-align: center; background-color: #25D366; color: white; padding: 10px; border-radius: 8px; text-decoration: none; font-weight: bold; margin-top: -10px;"
+                        st.markdown(f'<a href="{wa_link}" target="_blank" style="{button_css}">🚀 Click to Open WhatsApp</a>', unsafe_allow_html=True)
 
-    log_petition_to_gsheets
-    st.success("✅ Action recorded! Click the link below to send.") # Added this\
-    
+        
     # --- SOCIAL MEDIA AMPLIFICATION (X / TWITTER) ---
     st.markdown("---")
     st.markdown(f"##### {ui.get('x_routing', 'X Routing')}")
