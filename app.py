@@ -384,6 +384,11 @@ def get_petition_count():
 # --- GOOGLE SHEETS LOGGER ---
 def log_petition_to_gsheets(name, town, district, category):
     try:
+        # 1. READ: Pull the current data from the "Database" tab
+        # (This ensures we don't overwrite old petitions!)
+        existing_data = conn.read(worksheet="Database")
+        
+        # 2. CREATE: Prepare the new row
         new_entry = pd.DataFrame([{
             "Timestamp": datetime.now(ist_timezone).strftime("%Y-%m-%d %H:%M:%S"),
             "Reporter": name,
@@ -393,14 +398,17 @@ def log_petition_to_gsheets(name, town, district, category):
             "Status": "Dispatched"
         }])
         
-        # Append to the "Database" worksheet
-        conn.create(worksheet="Database", data=new_entry)
+        # 3. APPEND: Combine the old data with the new entry
+        updated_df = pd.concat([existing_data, new_entry], ignore_index=True)
         
-        # Clear the count cache so the header updates immediately!
+        # 4. UPDATE: Save the full, updated list back to the Google Sheet
+        # Note: We use .update() now, NOT .create()
+        conn.update(worksheet="Database", data=updated_df)
+        
+        # Clear the count cache so the "Total Petitions" counter refreshes instantly
         get_petition_count.clear()
         
     except Exception as e:
-        # This will show a red box at the bottom if the Google Sheet blocks the app
         st.error(f"❌ Database Error: {e}")
 
 total_petitions = get_petition_count()
