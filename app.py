@@ -907,7 +907,7 @@ if "letter" in st.session_state:
                         st.success(f"✅ Action recorded!")
                         st.markdown(f'<a href="{wa_link}" target="_blank">👉 Click here to open WhatsApp for {num}</a>', unsafe_allow_html=True)
 
-    log_petition_to_gsheets(...)
+    log_petition_to_gsheets
     st.success("✅ Action recorded! Click the link below to send.") # Added this\
     
     # --- SOCIAL MEDIA AMPLIFICATION (X / TWITTER) ---
