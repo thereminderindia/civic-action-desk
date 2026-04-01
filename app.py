@@ -376,15 +376,14 @@ app_titles = {
 @st.cache_data(ttl=600)
 def get_petition_count():
     try:
-        # Assuming your sheet has a header row, reading the length gives total entries
-        df = conn.read()
+        # TRI_Civic_Database
+        df = conn.read(worksheet="Database") 
         return len(df)
     except:
         return 0
 # --- GOOGLE SHEETS LOGGER ---
 def log_petition_to_gsheets(name, town, district, category):
     try:
-        # Create a tiny dataframe for the new row
         new_entry = pd.DataFrame([{
             "Timestamp": datetime.now(ist_timezone).strftime("%Y-%m-%d %H:%M:%S"),
             "Reporter": name,
@@ -394,14 +393,12 @@ def log_petition_to_gsheets(name, town, district, category):
             "Status": "Dispatched"
         }])
         
-        # Append to the Google Sheet
-        conn.create(data=new_entry)
+        # This ensures the new row drops into the correct tab
+        conn.create(worksheet="Database", data=new_entry)
         
-        # Clear the count cache so the header updates immediately!
         get_petition_count.clear()
         
     except Exception as e:
-        # Silent fail so the user experience isn't interrupted if the sheet is busy
         pass
 total_petitions = get_petition_count()
 # Add a nice visual flair above the main title
