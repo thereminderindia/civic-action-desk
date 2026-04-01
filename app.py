@@ -341,8 +341,6 @@ st.sidebar.link_button("📄 Privacy Policy", "https://sites.google.com/view/htt
 
 pincode_df = load_pincode_db()
 
-# --- HEADER BLOCK ---
-# Mini-dictionary to translate the brand name without editing 22 JSON files!
 # Mini-dictionary to perfectly transliterate the brand name into all 23+ scripts!
 app_titles = {
     "English": "The Reminder India",
@@ -383,7 +381,28 @@ def get_petition_count():
         return len(df)
     except:
         return 0
-
+# --- GOOGLE SHEETS LOGGER ---
+def log_petition_to_gsheets(name, town, district, category):
+    try:
+        # Create a tiny dataframe for the new row
+        new_entry = pd.DataFrame([{
+            "Timestamp": datetime.now(ist_timezone).strftime("%Y-%m-%d %H:%M:%S"),
+            "Reporter": name,
+            "Town": town,
+            "District": district,
+            "Category": category,
+            "Status": "Dispatched"
+        }])
+        
+        # Append to the Google Sheet
+        conn.create(data=new_entry)
+        
+        # Clear the count cache so the header updates immediately!
+        get_petition_count.clear()
+        
+    except Exception as e:
+        # Silent fail so the user experience isn't interrupted if the sheet is busy
+        pass
 total_petitions = get_petition_count()
 # Add a nice visual flair above the main title
 if total_petitions > 0:
@@ -825,6 +844,13 @@ if "letter" in st.session_state:
                             smtp.quit()
                             
                             st.success("✅ Official Letter Sent! Please check your email (and Spam folder) for your receipt.")
+                            # --- LOG TO DATABASE ---
+                            log_petition_to_gsheets(
+                                name=user_name,
+                                town=selected_loc['Town'],
+                                district=selected_loc['District'],
+                                category=issue_category
+                            )
                             st.balloons()
                         except Exception as e:
                             st.error(f"Error sending email: {e}")
