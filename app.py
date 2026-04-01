@@ -371,16 +371,16 @@ app_titles = {
     "Sanskrit (संस्कृतम्)": "द रिमाइंडर इंडिया"
 }
 
-# --- HEADER BLOCK ---
-# Create a cached function so it only checks Google Sheets every 10 minutes (saves load time)
+# --- GOOGLE SHEETS COUNTER ---
 @st.cache_data(ttl=600)
 def get_petition_count():
     try:
-        # TRI_Civic_Database
+        # worksheet="Database" matches your tab name
         df = conn.read(worksheet="Database") 
         return len(df)
-    except:
+    except Exception as e:
         return 0
+
 # --- GOOGLE SHEETS LOGGER ---
 def log_petition_to_gsheets(name, town, district, category):
     try:
@@ -393,13 +393,16 @@ def log_petition_to_gsheets(name, town, district, category):
             "Status": "Dispatched"
         }])
         
-        # This ensures the new row drops into the correct tab
+        # Append to the "Database" worksheet
         conn.create(worksheet="Database", data=new_entry)
         
+        # Clear the count cache so the header updates immediately!
         get_petition_count.clear()
         
     except Exception as e:
-        pass
+        # This will show a red box at the bottom if the Google Sheet blocks the app
+        st.error(f"❌ Database Error: {e}")
+
 total_petitions = get_petition_count()
 # Add a nice visual flair above the main title
 if total_petitions > 0:
