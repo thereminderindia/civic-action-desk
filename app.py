@@ -791,56 +791,7 @@ if "letter" in st.session_state:
 
     with col_btn2:
         st.caption("By clicking send, you agree to our Privacy Policy.")
-        
-        # --- THE CORRECTED EMAIL SEND BUTTON LOGIC ---
-        if st.button(ui.get("send_btn", "Send"), key=f"send_email_{st.session_state.reset_counter}"):
-            combined_bcc_list = []
-            if rec_bcc: combined_bcc_list.append(rec_bcc)
-            if user_receipt: combined_bcc_list.append(user_receipt)
-            final_bcc_string = ", ".join(combined_bcc_list)
-
-            if not is_valid_email(rec_to) or not is_valid_email(rec_cc) or not is_valid_email(final_bcc_string):
-                st.error("❌ Invalid email format detected.")
-            elif not rec_to:
-                st.error("❌ Primary Recipient (To) is required.")
-            else:
-                vault_files = st.session_state.get("file_vault", [])
-                total_size = sum([len(f["bytes"]) for f in vault_files]) if vault_files else 0
-                
-                if total_size > 20 * 1024 * 1024:
-                    st.error("⚠️ Attachments are too large! Please compress your video or use a photo instead (Max 20MB).")
-                else:
-                    with st.spinner("Preparing secure attachments & sending email..."):
-                            msg = MIMEMultipart()
-                            msg['Subject'] = f"CIVIC COMPLAINT: {selected_loc['Town']} - {user_name}"
-                            msg['From'] = SENDER_EMAIL
-                            msg['To'] = rec_to
-                            if rec_cc: msg['Cc'] = rec_cc
-                            if final_bcc_string: msg['Bcc'] = final_bcc_string
-                            
-                            msg.attach(MIMEText(st.session_state.letter, 'plain'))
-                            
-                            if vault_files:
-                                for f_data in vault_files:
-                                    file_bytes = f_data["bytes"]
-                                    mime_type = f_data["mime"]
-                                    if '/' not in mime_type: mime_type = 'application/octet-stream'
-                                    maintype, subtype = mime_type.split('/', 1)
-                                    clean_filename = f_data["name"].split("/")[-1].split("\\")[-1]
-                                    if '.' not in clean_filename:
-                                        ext = mimetypes.guess_extension(mime_type)
-                                        clean_filename += ext if ext else ".jpg" 
-                                    part = MIMEBase(maintype, subtype)
-                                    part.set_payload(file_bytes)
-                                    encoders.encode_base64(part) 
-                                    part.add_header('Content-Disposition', f'attachment; filename="{clean_filename}"')
-                                    msg.attach(part)
-                            
-                            smtp = smtplib.SMTP_SSL('smtp.gmail.com', 465)
-                            smtp.login(SENDER_EMAIL, APP_PASSWORD)
-                            smtp.send_message(msg)
-                            smtp.quit()
-                            
+                               
         # --- THE CORRECTED EMAIL SEND BUTTON LOGIC ---
         if st.button(ui.get("send_btn", "Send"), key=f"send_email_{st.session_state.reset_counter}"):
             combined_bcc_list = []
