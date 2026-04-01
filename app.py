@@ -792,6 +792,7 @@ if "letter" in st.session_state:
     with col_btn2:
         st.caption("By clicking send, you agree to our Privacy Policy.")
         
+        # --- THE CORRECTED EMAIL SEND BUTTON LOGIC ---
         if st.button(ui.get("send_btn", "Send"), key=f"send_email_{st.session_state.reset_counter}"):
             combined_bcc_list = []
             if rec_bcc: combined_bcc_list.append(rec_bcc)
@@ -810,7 +811,6 @@ if "letter" in st.session_state:
                     st.error("⚠️ Attachments are too large! Please compress your video or use a photo instead (Max 20MB).")
                 else:
                     with st.spinner("Preparing secure attachments & sending email..."):
-                        try:
                             msg = MIMEMultipart()
                             msg['Subject'] = f"CIVIC COMPLAINT: {selected_loc['Town']} - {user_name}"
                             msg['From'] = SENDER_EMAIL
@@ -824,23 +824,16 @@ if "letter" in st.session_state:
                                 for f_data in vault_files:
                                     file_bytes = f_data["bytes"]
                                     mime_type = f_data["mime"]
-                                    
-                                    if '/' not in mime_type:
-                                        mime_type = 'application/octet-stream'
-                                        
+                                    if '/' not in mime_type: mime_type = 'application/octet-stream'
                                     maintype, subtype = mime_type.split('/', 1)
                                     clean_filename = f_data["name"].split("/")[-1].split("\\")[-1]
-                                    
                                     if '.' not in clean_filename:
                                         ext = mimetypes.guess_extension(mime_type)
                                         clean_filename += ext if ext else ".jpg" 
-                                            
                                     part = MIMEBase(maintype, subtype)
                                     part.set_payload(file_bytes)
-                                    
                                     encoders.encode_base64(part) 
                                     part.add_header('Content-Disposition', f'attachment; filename="{clean_filename}"')
-                                    
                                     msg.attach(part)
                             
                             smtp = smtplib.SMTP_SSL('smtp.gmail.com', 465)
