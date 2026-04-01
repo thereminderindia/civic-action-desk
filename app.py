@@ -848,12 +848,11 @@ if "letter" in st.session_state:
                             smtp.send_message(msg)
                             smtp.quit()
                             
-                            # --- Inside your Send button logic ---
+                           # This is where your 'Send' button logic starts
         try:
-            # 1. Show the success message
-            st.success("✅ Official Letter Sent! Please check your email for your receipt.")
+            # Everything inside here must be indented 4 spaces further
+            st.success("✅ Official Letter Sent!")
             
-            # 2. Grab the email and log it to the database
             official_email = selected_loc.get('Email', 'Not Found')
             
             log_petition_to_gsheets(
@@ -864,13 +863,11 @@ if "letter" in st.session_state:
                 recipient_contact=official_email,
                 mode="Email"
             )
-            
-            # 3. Celebrate!
             st.balloons()
 
         except Exception as e:
-            # This handles any errors if the email fails to send
-            st.error(f"Error sending email: {e}")
+            # This 'except' MUST be perfectly aligned with the 'try' above
+            st.error(f"Error: {e}")
 
     # 1. Define the recipient's phone number (get this from your data or sheet)
     official_whatsapp_no = "9876543210" # Replace with the real number variable
