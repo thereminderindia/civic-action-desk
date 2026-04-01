@@ -382,30 +382,27 @@ def get_petition_count():
         return 0
 
 # --- GOOGLE SHEETS LOGGER ---
-def log_petition_to_gsheets(name, town, district, category):
+def log_petition_to_gsheets(name, town, district, category, recipient_contact, mode):
     try:
-        # 1. READ: Pull the current data from the "Database" tab
-        # (This ensures we don't overwrite old petitions!)
+        # 1. READ: Pull current data
         existing_data = conn.read(worksheet="Database")
         
-        # 2. CREATE: Prepare the new row
+        # 2. CREATE: Prepare the new row with the new columns
         new_entry = pd.DataFrame([{
             "Timestamp": datetime.now(ist_timezone).strftime("%Y-%m-%d %H:%M:%S"),
             "Reporter": name,
             "Town": town,
             "District": district,
             "Category": category,
-            "Status": "Dispatched"
+            "Status": "Dispatched",
+            "Recipient_Contact": recipient_contact, # Stores Email or Phone
+            "Mode": mode                             # Stores "Email" or "WhatsApp"
         }])
         
-        # 3. APPEND: Combine the old data with the new entry
+        # 3. APPEND & UPDATE
         updated_df = pd.concat([existing_data, new_entry], ignore_index=True)
-        
-        # 4. UPDATE: Save the full, updated list back to the Google Sheet
-        # Note: We use .update() now, NOT .create()
         conn.update(worksheet="Database", data=updated_df)
         
-        # Clear the count cache so the "Total Petitions" counter refreshes instantly
         get_petition_count.clear()
         
     except Exception as e:
@@ -851,17 +848,35 @@ if "letter" in st.session_state:
                             smtp.send_message(msg)
                             smtp.quit()
                             
-                            st.success("✅ Official Letter Sent! Please check your email (and Spam folder) for your receipt.")
-                            # --- LOG TO DATABASE ---
-                            log_petition_to_gsheets(
-                                name=user_name,
-                                town=selected_loc['Town'],
-                                district=selected_loc['District'],
-                                category=issue_category
-                            )
-                            st.balloons()
-                        except Exception as e:
-                            st.error(f"Error sending email: {e}")
+                            # --- Inside your Send button logic ---
+        try:
+            # 1. Show the success message
+            st.success("✅ Official Letter Sent! Please check your email for your receipt.")
+            
+            # 2. Grab the email and log it to the database
+            official_email = selected_loc.get('Email', 'Not Found')
+            
+            log_petition_to_gsheets(
+                name=user_name,
+                town=selected_loc['Town'],
+                district=selected_loc['District'],
+                category=issue_category,
+                recipient_contact=official_email,
+                mode="Email"
+            )
+            
+            # 3. Celebrate!
+            st.balloons()
+
+        except Exception as e:
+            # This handles any errors if the email fails to send
+            st.error(f"Error sending email: {e}")
+
+    # 1. Define the recipient's phone number (get this from your data or sheet)
+    official_whatsapp_no = "9876543210" # Replace with the real number variable
+
+    # 2. Create the URL for the link
+    whatsapp_url = f"https://wa.me/{official_whatsapp_no}?text=I am reporting a civic issue via The Reminder India."
 
     # --- MULTI-WHATSAPP ROUTING ---
     st.markdown("---")
@@ -892,7 +907,26 @@ if "letter" in st.session_state:
                 wa_link = f"https://wa.me/91{num}?text={encoded_letter}"
                 with btn_cols[i % 3]:
                     st.link_button(f"🟢 Send to {num}", wa_link, use_container_width=True)
+    
+    # --- Inside your WhatsApp Button block ---
+    if st.button("Send via WhatsApp"):
+    # (Your WhatsApp URL generation logic here)
+    
+        log_petition_to_gsheets(
+        name=user_name,
+        town=selected_loc['Town'],
+        district=selected_loc['District'],
+        category=issue_category,
+        recipient_contact=official_whatsapp_no, # This logs the phone number
+        mode="WhatsApp"                         # This logs that it was WhatsApp
+    )
+    
+    # Then open the WhatsApp link
+    st.markdown(f'<a href="{whatsapp_url}" target="_blank">Click here to open WhatsApp</a>', unsafe_allow_html=True)
 
+    log_petition_to_gsheets(...)
+    st.success("✅ Action recorded! Click the link below to send.") # Added this\
+    
     # --- SOCIAL MEDIA AMPLIFICATION (X / TWITTER) ---
     st.markdown("---")
     st.markdown(f"##### {ui.get('x_routing', 'X Routing')}")
