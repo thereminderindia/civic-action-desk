@@ -106,21 +106,6 @@ def local_css():
 st.set_page_config(page_title="The Reminder India", page_icon="🏛️", layout="wide")
 
 # Call the CSS function at the start
-
-st.markdown("""
-    <style>
-        /* Force horizontal layout for columns on mobile */
-        [data-testid="stHorizontalBlock"] {
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-        }
-        /* Ensure columns share the space properly without overflowing */
-        [data-testid="column"] {
-            min-width: 0 !important;
-        }
-    </style>
-""", unsafe_allow_html=True)
-
 local_css()
 
 # --- INITIALIZE RESET COUNTER ---
