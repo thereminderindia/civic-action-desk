@@ -261,7 +261,7 @@ def get_translated_ui(language):
         "Kashmiri (کأشُر)": "ks", "Nepali (नेपाली)": "ne", "Konkani (कोंकणी)": "kok", 
         "Sindhi (سنڌي)": "sd", "Dogri (डोगरी)": "doi", "Manipuri (মৈতৈলোন)": "mni", 
         "Bodo (बर')": "brx", "Sanskrit (संस्कृतम्)": "sa"
-    }    }
+    }
     file_key = lang_map.get(language, "en")
     file_path = os.path.join("locales", f"{file_key}.json")
     try:
