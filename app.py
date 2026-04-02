@@ -603,16 +603,41 @@ def clear_description():
     # This wipes the text box memory when the dropdown is manually changed
     st.session_state[desc_key] = ""
 
+# 1. PASTE THE MARKER AND CSS HERE
+# ==========================================
+st.markdown('<div class="mobile-button-row"></div>', unsafe_allow_html=True)
+st.markdown("""
+    <style>
+        /* Hide the marker */
+        .mobile-button-row { display: none; }
+        
+        /* Target ONLY the column block right after our marker */
+        div[data-testid="element-container"]:has(.mobile-button-row) + div[data-testid="stHorizontalBlock"],
+        div[data-testid="element-container"]:has(.mobile-button-row) + div[data-testid="element-container"] > div[data-testid="stHorizontalBlock"] {
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+        }
+        
+        /* Ensure these specific columns shrink to fit the mobile screen */
+        div[data-testid="element-container"]:has(.mobile-button-row) + div[data-testid="stHorizontalBlock"] > div[data-testid="column"],
+        div[data-testid="element-container"]:has(.mobile-button-row) + div[data-testid="element-container"] > div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
+            min-width: 0 !important;
+            flex: 1 1 0% !important; 
+        }
+    </style>
+""", unsafe_allow_html=True)
+
+# ==========================================
 # Now the buttons directly inject generic, professional text into Streamlit's memory!
-if c1.button("💡 Light"):
+if c1.button("💡 Light", use_container_width=True):
     st.session_state[cat_key] = "Non-functional Streetlight"
     st.session_state[desc_key] = "Multiple streetlights in this locality are completely non-functional, causing severe safety and security concerns for residents commuting at night."
     
-if c2.button("🚰 Water"):
+if c2.button("🚰 Water", use_container_width=True):
     st.session_state[cat_key] = "Contaminated Water"
     st.session_state[desc_key] = "The local water supply is highly contaminated, emitting a foul odor and appearing discolored. This poses a severe health hazard to all residents in the area."
     
-if c3.button("🛣️ Road"):
+if c3.button("🛣️ Road", use_container_width=True):
     st.session_state[cat_key] = "Broken Road / Pothole"
     st.session_state[desc_key] = "The main road is severely damaged with deep, dangerous potholes. It is causing frequent traffic disruptions and poses a high risk of vehicle damage and accidents for daily commuters."
 
