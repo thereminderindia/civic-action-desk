@@ -38,5 +38,6 @@
   "x_routing": "🐦 Public Amplification (X / Twitter)",
   "x_handle": "Official's X Handle (e.g., @KandhlaPalika):",
   "x_btn": "🐦 Post Summary to X (Twitter)",
-  "clear_btn": "🔄 Clear Form & Start New"
+  "clear_btn": "🔄 Clear Form & Start New",
+  "petition_counter": "🔥 Join the movement: **{count}** civic petitions successfully dispatched via The Reminder India."
 }
