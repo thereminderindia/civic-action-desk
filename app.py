@@ -258,10 +258,10 @@ def get_translated_ui(language):
         "Gujarati (ગુજરાતી)": "gu", "Urdu (اردو)": "ur", "Kannada (ಕನ್ನಡ)": "kn", 
         "Odia (ଓଡ଼ିଆ)": "or", "Malayalam (മലയാളം)": "ml", "Punjabi (ਪੰਜਾਬੀ)": "pa", 
         "Assamese (অসমীয়া)": "as", "Maithili (मैथिली)": "mai", "Santali (संताली)": "sat", 
-        "Kashmiri (کٲशُر)": "ks", "Nepali (नेपाली)": "ne", "Konkani (कोंकणी)": "kok", 
+        "Kashmiri (کأشُر)": "ks", "Nepali (नेपाली)": "ne", "Konkani (कोंकणी)": "kok", 
         "Sindhi (سنڌي)": "sd", "Dogri (डोगरी)": "doi", "Manipuri (মৈতৈলোন)": "mni", 
         "Bodo (बर')": "brx", "Sanskrit (संस्कृतम्)": "sa"
-    }
+    }    }
     file_key = lang_map.get(language, "en")
     file_path = os.path.join("locales", f"{file_key}.json")
     try:
@@ -284,7 +284,7 @@ def get_translated_slides(language):
         "Gujarati (ગુજરાતી)": "gu_slides", "Urdu (اردو)": "ur_slides", "Kannada (ಕನ್ನಡ)": "kn_slides", 
         "Odia (ଓଡ଼ିଆ)": "or_slides", "Malayalam (മലയാളം)": "ml_slides", "Punjabi (ਪੰਜਾਬੀ)": "pa_slides", 
         "Assamese (অসমীয়া)": "as_slides", "Maithili (मैथिली)": "mai_slides", "Santali (संताली)": "sat_slides", 
-        "Kashmiri (کٲशُر)": "ks_slides", "Nepali (नेपाली)": "ne_slides", "Konkani (कोंकणी)": "kok_slides", 
+        "Kashmiri (کأشُر)": "ks_slides", "Nepali (नेपाली)": "ne_slides", "Konkani (कोंकणी)": "kok_slides", 
         "Sindhi (سنڌي)": "sd_slides", "Dogri (डोगरी)": "doi_slides", "Manipuri (মৈতৈলোন)": "mni_slides", 
         "Bodo (बर')": "brx_slides", "Sanskrit (संस्कृतम्)": "sa_slides"
     }
@@ -311,14 +311,15 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.sidebar.subheader("🌐 App Settings / ऐप सेटिंग्स")
-global_language = st.sidebar.selectbox("Select Language:", options=
-    ["English", "Hindi (हिन्दी)", "Bengali (বাংলা)", "Marathi (मराठी)", 
-     "Telugu (తెలుగు)", "Tamil (தமிழ்)", "Gujarati (ગુજરાતી)", 
-     "Urdu (اردو)", "Kannada (କನ್ನಡ)", "Odia (ଓଡ଼ିଆ)", 
-     "Malayalam (മലയാളം)", "Punjabi (ਪੰਜਾਬੀ)", "Assamese (অসমੀয়া)", 
-     "Maithili (मैथिली)", "Santali (संताली)", "Kashmiri (کٲशُر)", 
-     "Nepali (नेपाली)", "Konkani (कोंकਣੀ)", "Sindhi (سنڌي)", 
-     "Dogri (डोगरी)", "Manipuri (মৈতৈলোন)", "Bodo (बर')", "Sanskrit (संस्कृतम्)"])
+global_language = st.sidebar.selectbox("Select Language:", options=[
+    "English", "Hindi (हिन्दी)", "Bengali (বাংলা)", "Marathi (मराठी)", 
+    "Telugu (తెలుగు)", "Tamil (தமிழ்)", "Gujarati (ગુજરાતી)", 
+    "Urdu (اردو)", "Kannada (ಕನ್ನಡ)", "Odia (ଓଡ଼ିଆ)", 
+    "Malayalam (മലയാളം)", "Punjabi (ਪੰਜਾਬੀ)", "Assamese (অসমীয়া)", 
+    "Maithili (मैथिली)", "Santali (संताली)", "Kashmiri (کأشُر)", 
+    "Nepali (नेपाली)", "Konkani (कोंकणी)", "Sindhi (سنڌي)", 
+    "Dogri (डोगरी)", "Manipuri (মৈতৈলোন)", "Bodo (बर')", "Sanskrit (संस्कृतम्)"
+])
 
 # LOAD LOCAL TRANSLATED UI DICTIONARY
 ui = get_translated_ui(global_language)
@@ -362,14 +363,11 @@ app_titles = {
     "Maithili (मैथिली)": "द रिमाइंडर इंडिया",
     "Santali (संताली)": "द रिमाइंडर इंडिया",
     "Kashmiri (کأشُر)": "دی ریمائنڈر انڈیا",
-    "Kashmiri (کٲशُر)": "دی ریمائنڈر انڈیا", 
     "Nepali (नेपाली)": "द रिमाइंडर इन्डिया",
     "Konkani (कोंकणी)": "द रिमाइंडर इंडिया",
-    "Konkani (कोंकਣੀ)": "द रिमाइंडर इंडिया", 
     "Sindhi (سنڌي)": "دي ريمائنڊر انڊيا",
     "Dogri (डोगरी)": "द रिमाइंडर इंडिया",
-    "Manipuri (মণিপুরী)": "দি রিমাইন্ডার ইন্ডিয়া",
-    "Manipuri (মৈতৈলোন)": "দি রিমাইন্ডার ইন্ডিয়া", 
+    "Manipuri (মৈতৈলোন)": "দি রিমাইন্ডার ইন্ডিয়া",
     "Bodo (बर')": "द रिमाइंडर इंडिया",
     "Sanskrit (संस्कृतम्)": "द रिमाइंडर इंडिया"
 }
