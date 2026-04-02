@@ -605,24 +605,21 @@ def clear_description():
 
 # 1. PASTE THE MARKER AND CSS HERE
 # ==========================================
-st.markdown('<div class="mobile-button-row"></div>', unsafe_allow_html=True)
 st.markdown("""
     <style>
-        /* Hide the marker */
-        .mobile-button-row { display: none; }
-        
-        /* Target ONLY the column block right after our marker */
-        div[data-testid="element-container"]:has(.mobile-button-row) + div[data-testid="stHorizontalBlock"],
-        div[data-testid="element-container"]:has(.mobile-button-row) + div[data-testid="element-container"] > div[data-testid="stHorizontalBlock"] {
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-        }
-        
-        /* Ensure these specific columns shrink to fit the mobile screen */
-        div[data-testid="element-container"]:has(.mobile-button-row) + div[data-testid="stHorizontalBlock"] > div[data-testid="column"],
-        div[data-testid="element-container"]:has(.mobile-button-row) + div[data-testid="element-container"] > div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
-            min-width: 0 !important;
-            flex: 1 1 0% !important; 
+        /* Target ONLY mobile screens (under 640px wide) */
+        @media (max-width: 640px) {
+            /* Find any row that has exactly 3 columns in it and force it horizontal */
+            [data-testid="stHorizontalBlock"]:has(> [data-testid="column"]:nth-child(3):last-child) {
+                flex-direction: row !important;
+                flex-wrap: nowrap !important;
+            }
+            /* Make sure the 3 columns share the space equally */
+            [data-testid="stHorizontalBlock"]:has(> [data-testid="column"]:nth-child(3):last-child) > [data-testid="column"] {
+                width: 33.33% !important;
+                min-width: 0 !important;
+                padding: 0 2px !important; /* Tiny gap so buttons don't touch */
+            }
         }
     </style>
 """, unsafe_allow_html=True)
