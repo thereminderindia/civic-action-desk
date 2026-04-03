@@ -452,10 +452,6 @@ st.markdown("<br>", unsafe_allow_html=True)
 st.markdown("---")
 
 with st.expander(ui.get("tutorial_expander", "Tutorial"), expanded=False):
-    # ADD THIS LINE: Replace with your actual YouTube Short link
-    st.video("https://www.youtube.com/watch?v=YOUR_VIDEO_ID_HERE")
-    st.markdown("<br>", unsafe_allow_html=True)
-    
     if "slide_idx" not in st.session_state:
         st.session_state.slide_idx = 0
 
